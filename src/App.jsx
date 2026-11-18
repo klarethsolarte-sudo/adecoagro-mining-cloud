@@ -23,7 +23,39 @@ export default function App(){
  async function loadReports(){const {data,error}=await supabase.from("daily_reports").select("*").order("report_date",{ascending:false}); if(error)setNotice(error.message); else setReports(data||[]);}
  async function loadUsers(){const {data,error}=await supabase.from("profiles").select("id,email,full_name,role,status,created_at").order("created_at"); if(error)setNotice(error.message); else setUsers(data||[]);}
  async function signIn(){const {error}=await supabase.auth.signInWithOAuth({provider:"google",options:{redirectTo:window.location.origin}}); if(error)setNotice(error.message);}
- async function save(e){e.preventDefault(); const payload={...form,hashrate:num(form.hashrate),miners_online:num(form.miners_online),miners_offline:num(form.miners_offline),availability:num(form.availability),power_mw:num(form.power_mw),monthly_kwh:num(form.monthly_kwh),generators_online:num(form.generators_online)}; delete payload.id; let result=editing?await supabase.from("daily_reports").update(payload).eq("id",editing).select().single():await supabase.from("daily_reports").insert(payload).select().single(); if(result.error)setNotice(result.error.message); else {setNotice("Relatório salvo.");setForm(blank);setEditing(null);loadReports();}}
+ async function save(e){
+  e.preventDefault();
+
+  const payload={
+    report_date:form.report_date,
+    created_by:session.user.id,
+    operators:form.operator_names,
+    day_off:form.is_rest?"Sí":"No",
+    hashrate_ph:num(form.hashrate),
+    miners_online:num(form.miners_online),
+    miners_offline:num(form.miners_offline),
+    availability_pct:num(form.availability),
+    power_mw:num(form.power_mw),
+    month_consumption_kwh:num(form.monthly_kwh),
+    generators_running:num(form.generators_online),
+    occurrences:form.incidents,
+    maintenance:form.maintenance,
+    next_shift_pending:form.next_shift_pending,
+    supervisor_instructions:form.supervisor_guidance
+  };
+
+  let result=editing
+    ?await supabase.from("daily_reports").update(payload).eq("id",editing).select().single()
+    :await supabase.from("daily_reports").insert(payload).select().single();
+
+  if(result.error)setNotice(result.error.message);
+  else{
+    setNotice("Relatório salvo.");
+    setForm(blank);
+    setEditing(null);
+    loadReports();
+  }
+}e.preventDefault(); const payload={...form,hashrate:num(form.hashrate),miners_online:num(form.miners_online),miners_offline:num(form.miners_offline),availability:num(form.availability),power_mw:num(form.power_mw),monthly_kwh:num(form.monthly_kwh),generators_online:num(form.generators_online)}; delete payload.id; let result=editing?await supabase.from("daily_reports").update(payload).eq("id",editing).select().single():await supabase.from("daily_reports").insert(payload).select().single(); if(result.error)setNotice(result.error.message); else {setNotice("Relatório salvo.");setForm(blank);setEditing(null);loadReports();}}
  function num(v){return v===""||v===null?null:Number(v);}
  async function statusChange(id,status){const {error}=await supabase.rpc("set_operator_status",{target_user_id:id,new_status:status}); if(error)setNotice(error.message);else {setNotice("Status atualizado.");loadUsers();}}
  function edit(r){setEditing(r.id);let f={...blank};fields.forEach(k=>f[k]=r[k]??(k==="is_rest"?false:""));setForm(f);window.scrollTo({top:0,behavior:"smooth"});}
