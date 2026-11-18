@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { toJpeg } from "html-to-image";
 import jsPDF from "jspdf";
 import { configured, supabase } from "./supabase";
@@ -44,9 +44,24 @@ export default function App(){
     supervisor_instructions:form.supervisor_guidance
   };
 
-  let result=editing
-    ?await supabase.from("daily_reports").update(payload).eq("id",editing).select().single()
-    :await supabase.from("daily_reports").insert(payload).select().single();
+ 
+let result;
+
+if(editing){
+  const {created_by,...updatePayload}=payload;
+  result=await supabase
+    .from("daily_reports")
+    .update(updatePayload)
+    .eq("id",editing)
+    .select()
+    .single();
+}else{
+  result=await supabase
+    .from("daily_reports")
+    .insert(payload)
+    .select()
+    .single();
+}
 
   if(result.error)setNotice(result.error.message);
   else{
@@ -55,11 +70,64 @@ export default function App(){
     setEditing(null);
     loadReports();
   }
-}e.preventDefault(); const payload={...form,hashrate:num(form.hashrate),miners_online:num(form.miners_online),miners_offline:num(form.miners_offline),availability:num(form.availability),power_mw:num(form.power_mw),monthly_kwh:num(form.monthly_kwh),generators_online:num(form.generators_online)}; delete payload.id; let result=editing?await supabase.from("daily_reports").update(payload).eq("id",editing).select().single():await supabase.from("daily_reports").insert(payload).select().single(); if(result.error)setNotice(result.error.message); else {setNotice("Relatório salvo.");setForm(blank);setEditing(null);loadReports();}}
+ }
  function num(v){return v===""||v===null?null:Number(v);}
  async function statusChange(id,status){const {error}=await supabase.rpc("set_operator_status",{target_user_id:id,new_status:status}); if(error)setNotice(error.message);else {setNotice("Status atualizado.");loadUsers();}}
- function edit(r){setEditing(r.id);let f={...blank};fields.forEach(k=>f[k]=r[k]??(k==="is_rest"?false:""));setForm(f);window.scrollTo({top:0,behavior:"smooth"});}
- async function exportPdf(r){const doc=new jsPDF();doc.setFontSize(16);doc.text("ADECOAGRO MINING CLOUD",14,18);doc.setFontSize(12);doc.text(`Relatório diário - ${r.report_date}`,14,29);let y=42;const rows=[["Operador(es)",r.operator_names],["Folga / Descanso",r.is_rest?"Sim":"Não"],["Hashrate (PH/s)",r.hashrate],["Mineradoras em operação",r.miners_online],["Mineradoras offline",r.miners_offline],["Disponibilidade (%)",r.availability],["Consumo (MW)",r.power_mw],["Consumo do mês (kWh)",r.monthly_kwh],["Geradores em operação",r.generators_online],["Ocorrências",r.incidents],["Manutenções",r.maintenance],["Pendências próximo turno",r.next_shift_pending],["Orientações da supervisão",r.supervisor_guidance]]; rows.forEach(([a,b])=>{let lines=doc.splitTextToSize(`${a}: ${b??"-"}`,180);if(y+lines.length*6>280){doc.addPage();y=18;}doc.text(lines,14,y);y+=lines.length*7;});doc.save(`adecoagro-${r.report_date}.pdf`);}
+ function edit(r){
+ setEditing(r.id);
+ setForm({
+  report_date:r.report_date,
+  operator_names:r.operators||"",
+  is_rest:r.day_off==="Sí"||r.day_off==="Sim",
+  hashrate:r.hashrate_ph??"",
+  miners_online:r.miners_online??"",
+  miners_offline:r.miners_offline??"",
+  availability:r.availability_pct??"",
+  power_mw:r.power_mw??"",
+  monthly_kwh:r.month_consumption_kwh??"",
+  generators_online:r.generators_running??"",
+  incidents:r.occurrences||"",
+  maintenance:r.maintenance||"",
+  next_shift_pending:r.next_shift_pending||"",
+  supervisor_guidance:r.supervisor_instructions||""
+ });
+ window.scrollTo({top:0,behavior:"smooth"});
+}
+
+async function exportPdf(r){
+  const doc=new jsPDF();
+  doc.setFontSize(16);
+  doc.text("ADECOAGRO MINING CLOUD",14,18);
+  doc.setFontSize(12);
+  doc.text(`Relatório diário - ${r.report_date}`,14,29);
+  let y=42;
+  const rows=[
+    ["Operador(es)",r.operators],
+    ["Folga / Descanso",r.day_off],
+    ["Hashrate (PH/s)",r.hashrate_ph],
+    ["Mineradoras em operação",r.miners_online],
+    ["Mineradoras offline",r.miners_offline],
+    ["Disponibilidade (%)",r.availability_pct],
+    ["Consumo (MW)",r.power_mw],
+    ["Consumo do mês (kWh)",r.month_consumption_kwh],
+    ["Geradores em operação",r.generators_running],
+    ["Ocorrências",r.occurrences],
+    ["Manutenções",r.maintenance],
+    ["Pendências próximo turno",r.next_shift_pending],
+    ["Orientações da supervisão",r.supervisor_instructions]
+  ];
+  rows.forEach(([a,b])=>{
+    let lines=doc.splitTextToSize(`${a}: ${b??"-"}`,180);
+    if(y+lines.length*6>280){
+      doc.addPage();
+      y=18;
+    }
+    doc.text(lines,14,y);
+    y+=lines.length*7;
+  });
+  doc.save(`adecoagro-${r.report_date}.pdf`);
+}
+
  async function exportJpg(r){const node=document.getElementById(`report-${r.id}`);if(!node)return;const data=await toJpeg(node,{quality:.92,backgroundColor:"#ffffff"});const a=document.createElement("a");a.href=data;a.download=`adecoagro-${r.report_date}.jpg`;a.click();}
  function label(k){return ({report_date:t.date,operator_names:t.operator,is_rest:t.rest,hashrate:t.hash,miners_online:t.online,miners_offline:t.offline,availability:t.availability,power_mw:t.power,monthly_kwh:t.month,generators_online:t.generators,incidents:t.events,maintenance:t.maintenance,next_shift_pending:t.pending,supervisor_guidance:t.guidance})[k];}
  if(!configured)return <main className="center"><section className="panel"><h1>ADECOAGRO MINING CLOUD</h1><p>O código está pronto para configurar, mas ainda faltam as credenciais do projeto Supabase.</p><p>Crie um arquivo <code>.env</code> com base em <code>.env.example</code>, preenchendo a URL e a chave publicável do Supabase. Nunca coloque a chave service_role no navegador.</p></section></main>;
@@ -69,9 +137,34 @@ export default function App(){
  <section className="panel"><h2>{t.title}</h2><form onSubmit={save}><div className="fields">
  {fields.map(k=><label key={k} className={["incidents","maintenance","next_shift_pending","supervisor_guidance"].includes(k)?"wide":""}>{label(k)}{k==="is_rest"?<input type="checkbox" checked={!!form[k]} onChange={e=>setForm({...form,[k]:e.target.checked})}/>:["incidents","maintenance","next_shift_pending","supervisor_guidance"].includes(k)?<textarea rows="3" value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})}/>:<input required={k==="report_date"||k==="operator_names"} type={k==="report_date"?"date":k==="operator_names"?"text":"number"} step="any" value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})}/>}</label>)}
  </div><button type="submit">{t.save}</button>{editing&&<button type="button" className="secondary" onClick={()=>{setEditing(null);setForm(blank)}}>Cancelar edição</button>}</form></section>
- <section className="panel"><h2>{t.history}</h2>{reports.length===0?<p>{t.noReports}</p>:reports.map(r=><article className="report" id={`report-${r.id}`} key={r.id}><div className="reporthead"><h3>{r.report_date} · {r.operator_names}</h3><div><button className="secondary" onClick={()=>exportPdf(r)}>PDF</button> <button className="secondary" onClick={()=>exportJpg(r)}>JPG</button>{(r.created_by===session.user.id||isAdmin)&&<> <button className="secondary" onClick={()=>edit(r)}>Editar</button></>}</div></div><p><b>Hashrate:</b> {r.hashrate??"-"} PH/s · <b>Disponibilidade:</b> {r.availability??"-"}%</p><p><b>Mineradoras:</b> {r.miners_online??"-"} online / {r.miners_offline??"-"} offline · <b>Geradores:</b> {r.generators_online??"-"}/3</p><p><b>Consumo:</b> {r.power_mw??"-"} MW · <b>Mês:</b> {r.monthly_kwh??"-"} kWh</p>{[["Ocorrências",r.incidents],["Manutenções",r.maintenance],["Pendências",r.next_shift_pending],["Orientações",r.supervisor_guidance]].map(([a,b])=><p key={a}><b>{a}:</b> {b||"-"}</p>)}</article>)}</section>
+ 
+<section className="panel">
+  <h2>{t.history}</h2>
+  {reports.length===0?<p>{t.noReports}</p>:reports.map(r=>
+    <article className="report" id={`report-${r.id}`} key={r.id}>
+      <div className="reporthead">
+        <h3>{r.report_date} · {r.operators}</h3>
+        <div>
+          <button className="secondary" onClick={()=>exportPdf(r)}>PDF</button>
+          <button className="secondary" onClick={()=>exportJpg(r)}>JPG</button>
+          {(r.created_by===session.user.id||isAdmin)&&
+            <button className="secondary" onClick={()=>edit(r)}>Editar</button>}
+        </div>
+      </div>
+      <p><b>Hashrate:</b> {r.hashrate_ph??"-"} PH/s · <b>Disponibilidade:</b> {r.availability_pct??"-"}%</p>
+      <p><b>Mineradoras:</b> {r.miners_online??"-"} online / {r.miners_offline??"-"} offline · <b>Geradores:</b> {r.generators_running??"-"}/3</p>
+      <p><b>Consumo:</b> {r.power_mw??"-"} MW · <b>Mês:</b> {r.month_consumption_kwh??"-"} kWh</p>
+      <p><b>Descanso:</b> {r.day_off||"-"}</p>
+      {[["Ocorrências",r.occurrences],["Manutenções",r.maintenance],["Pendências",r.next_shift_pending],["Orientações",r.supervisor_instructions]].map(([a,b])=>
+        <p key={a}><b>{a}:</b> {b||"-"}</p>
+      )}
+    </article>
+  )}
+</section>
+
  {isAdmin&&<section className="panel"><h2>{t.admin}</h2><p>Administrador principal: {ADMIN}. Limite planejado: 1 administrador + 9 operadores.</p>{users.map(u=><div className="userrow" key={u.id}><span><b>{u.full_name||u.email}</b><small>{u.email} · {u.status} · {u.role}</small></span><span>{u.role!=="admin"&&<><button onClick={()=>statusChange(u.id,"approved")}>Aprovar</button> <button className="danger" onClick={()=>statusChange(u.id,"blocked")}>Bloquear</button></>}</span></div>)}</section>}
  </>}
  {notice&&<div className="notice" onClick={()=>setNotice("")}>{notice} ×</div>}
- <footer>ADECOAGRO · Energia em crescimento</footer></main>;
+<footer>ADECOAGRO · Energia em crescimento</footer>
+</main>;
 }
