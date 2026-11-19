@@ -10,8 +10,24 @@ const translations = {
   "en-US": {login:"Sign in with Google", title:"Daily operational report", date:"Date", operator:"Operator(s)", rest:"Off duty / Rest", hash:"Hashrate (PH/s)", online:"Miners operating (Units)", offline:"Miners offline (Units)", availability:"Availability (%)", power:"Power consumption (MW)", month:"Monthly consumption (kWh)", generators:"Generators operating (of 3)", events:"Incidents", maintenance:"Maintenance performed", pending:"Next shift pending items", guidance:"Supervisor instructions / decisions", save:"Save report", history:"Shared history", admin:"User administration", logout:"Sign out", pendingStatus:"Awaiting approval", blocked:"Account blocked", waiting:"Your account is registered and awaits administrator approval.", noReports:"No reports found."}
 };
 const today = new Date().toISOString().slice(0,10);
-const blank = {report_date:today, operator_names:"", is_rest:false, hashrate:"", miners_online:"", miners_offline:"", availability:"", power_mw:"", monthly_kwh:"", generators_online:"", incidents:"", maintenance:"", next_shift_pending:"", supervisor_guidance:""};
-const fields = ["report_date","operator_names","is_rest","hashrate","miners_online","miners_offline","availability","power_mw","monthly_kwh","generators_online","incidents","maintenance","next_shift_pending","supervisor_guidance"];
+const blank = {
+  report_date:today,
+  operator_names:"",
+  rest_type:"none",
+  rest_person:"",
+  hashrate:"",
+  miners_online:"",
+  miners_offline:"",
+  availability:"",
+  power_mw:"",
+  monthly_kwh:"",
+  generators_online:"",
+  incidents:"",
+  maintenance:"",
+  next_shift_pending:"",
+  supervisor_guidance:""
+};
+const fields = ["report_date","operator_names","rest_type","rest_person","hashrate","miners_online","miners_offline","availability","power_mw","monthly_kwh","generators_online","incidents","maintenance","next_shift_pending","supervisor_guidance"];
 export default function App(){
  const [session,setSession]=useState(null), [profile,setProfile]=useState(null), [lang,setLang]=useState(localStorage.getItem("amc-lang")||"pt-BR");
  const [form,setForm]=useState(blank), [reports,setReports]=useState([]), [users,setUsers]=useState([]), [editing,setEditing]=useState(null), [notice,setNotice]=useState("");
@@ -26,11 +42,17 @@ export default function App(){
  async function save(e){
   e.preventDefault();
 
+  if(form.rest_type!=="none" && !form.rest_person.trim()){
+    setNotice("Informe o nome da pessoa.");
+    return;
+  }
+ 
+
   const payload={
     report_date:form.report_date,
     created_by:session.user.id,
     operators:form.operator_names,
-    day_off:form.is_rest?"Sí":"No",
+    day_off:form.rest_type==="none"?"No":`${form.rest_type}|${form.rest_person.trim()}`,
     hashrate_ph:num(form.hashrate),
     miners_online:num(form.miners_online),
     miners_offline:num(form.miners_offline),
@@ -74,26 +96,36 @@ if(editing){
  function num(v){return v===""||v===null?null:Number(v);}
  async function statusChange(id,status){const {error}=await supabase.rpc("set_operator_status",{target_user_id:id,new_status:status}); if(error)setNotice(error.message);else {setNotice("Status atualizado.");loadUsers();}}
  function edit(r){
- setEditing(r.id);
- setForm({
-  report_date:r.report_date,
-  operator_names:r.operators||"",
-  is_rest:r.day_off==="Sí"||r.day_off==="Sim",
-  hashrate:r.hashrate_ph??"",
-  miners_online:r.miners_online??"",
-  miners_offline:r.miners_offline??"",
-  availability:r.availability_pct??"",
-  power_mw:r.power_mw??"",
-  monthly_kwh:r.month_consumption_kwh??"",
-  generators_online:r.generators_running??"",
-  incidents:r.occurrences||"",
-  maintenance:r.maintenance||"",
-  next_shift_pending:r.next_shift_pending||"",
-  supervisor_guidance:r.supervisor_instructions||""
- });
- window.scrollTo({top:0,behavior:"smooth"});
-}
+  setEditing(r.id);
+  const dayOff = r.day_off || "";
+  const oldType = dayOff.toLowerCase();
 
+  setForm({
+    report_date:r.report_date,
+    operator_names:r.operators||"",
+    rest_type:dayOff.includes("|")
+      ? dayOff.split("|")[0]
+      : (["folga","atestado","banco de horas","falta"].includes(oldType)
+          ? oldType
+          : (["sí","sim"].includes(oldType) ? "folga" : "none")),
+    rest_person:dayOff.includes("|")
+      ? dayOff.split("|").slice(1).join("|")
+      : "",
+    hashrate:r.hashrate_ph??"",
+    miners_online:r.miners_online??"",
+    miners_offline:r.miners_offline??"",
+    availability:r.availability_pct??"",
+    power_mw:r.power_mw??"",
+    monthly_kwh:r.month_consumption_kwh??"",
+    generators_online:r.generators_running??"",
+    incidents:r.occurrences||"",
+    maintenance:r.maintenance||"",
+    next_shift_pending:r.next_shift_pending||"",
+    supervisor_guidance:r.supervisor_instructions||""
+  });
+
+  window.scrollTo({top:0,behavior:"smooth"});
+}
 async function exportPdf(r){
   const doc=new jsPDF();
   doc.setFontSize(16);
@@ -103,7 +135,7 @@ async function exportPdf(r){
   let y=42;
   const rows=[
     ["Operador(es)",r.operators],
-    ["Folga / Descanso",r.day_off],
+    ["Folga / Descanso",r.day_off==="No"?"Sem descanso":r.day_off?.includes("|")?`${r.day_off.split("|")[0]} — ${r.day_off.split("|").slice(1).join("|")}`:r.day_off||"-"],
     ["Hashrate (PH/s)",r.hashrate_ph],
     ["Mineradoras em operação",r.miners_online],
     ["Mineradoras offline",r.miners_offline],
@@ -129,7 +161,25 @@ async function exportPdf(r){
 }
 
  async function exportJpg(r){const node=document.getElementById(`report-${r.id}`);if(!node)return;const data=await toJpeg(node,{quality:.92,backgroundColor:"#ffffff"});const a=document.createElement("a");a.href=data;a.download=`adecoagro-${r.report_date}.jpg`;a.click();}
- function label(k){return ({report_date:t.date,operator_names:t.operator,is_rest:t.rest,hashrate:t.hash,miners_online:t.online,miners_offline:t.offline,availability:t.availability,power_mw:t.power,monthly_kwh:t.month,generators_online:t.generators,incidents:t.events,maintenance:t.maintenance,next_shift_pending:t.pending,supervisor_guidance:t.guidance})[k];}
+ function label(k){
+  return ({
+    report_date:t.date,
+    operator_names:t.operator,
+    rest_type:t.rest,
+    rest_person:lang==="pt-BR"?"Nome da pessoa":lang==="es-419"?"Nombre de la persona":"Person's name",
+    hashrate:t.hash,
+    miners_online:t.online,
+    miners_offline:t.offline,
+    availability:t.availability,
+    power_mw:t.power,
+    monthly_kwh:t.month,
+    generators_online:t.generators,
+    incidents:t.events,
+    maintenance:t.maintenance,
+    next_shift_pending:t.pending,
+    supervisor_guidance:t.guidance
+  })[k];
+}
  if(!configured)return <main className="center"><section className="panel"><h1>ADECOAGRO MINING CLOUD</h1><p>O código está pronto para configurar, mas ainda faltam as credenciais do projeto Supabase.</p><p>Crie um arquivo <code>.env</code> com base em <code>.env.example</code>, preenchendo a URL e a chave publicável do Supabase. Nunca coloque a chave service_role no navegador.</p></section></main>;
  return <main>
  <header>
@@ -146,7 +196,23 @@ async function exportPdf(r){
   </div><div className="tools"><select value={lang} onChange={e=>{setLang(e.target.value);localStorage.setItem("amc-lang",e.target.value)}}><option value="pt-BR">Português</option><option value="es-419">Español</option><option value="en-US">English</option></select>{session&&<button className="secondary" onClick={()=>supabase.auth.signOut()}>{t.logout}</button>}</div></header>
  {!session?<section className="panel login"><h1>ADECOAGRO MINING CLOUD</h1><p>Plataforma de relatórios operacionais</p><button onClick={signIn}>{t.login}</button></section>:!profile?<section className="panel"><p>Carregando perfil...</p></section>:profile.status!=="approved"&&!isAdmin?<section className="panel"><h2>{profile.status==="blocked"?t.blocked:t.pendingStatus}</h2><p>{profile.status==="blocked"?"Entre em contato com o administrador.":t.waiting}</p></section>:<>
  <section className="panel"><h2>{t.title}</h2><form onSubmit={save}><div className="fields">
- {fields.map(k=><label key={k} className={["incidents","maintenance","next_shift_pending","supervisor_guidance"].includes(k)?"wide":""}>{label(k)}{k==="is_rest"?<input type="checkbox" checked={!!form[k]} onChange={e=>setForm({...form,[k]:e.target.checked})}/>:["incidents","maintenance","next_shift_pending","supervisor_guidance"].includes(k)?<textarea rows="3" value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})}/>:<input required={k==="report_date"||k==="operator_names"} type={k==="report_date"?"date":k==="operator_names"?"text":"number"} step="any" value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})}/>}</label>)}
+{fields.map(k=><label key={k} className={["incidents","maintenance","next_shift_pending","supervisor_guidance"].includes(k)?"wide":""}>
+  {label(k)}
+  {k==="rest_type"?
+    <select value={form.rest_type} onChange={e=>setForm({...form,rest_type:e.target.value})}>
+      <option value="none">{lang==="pt-BR"?"Sem descanso":lang==="es-419"?"Sin descanso":"No absence"}</option>
+      <option value="folga">{lang==="pt-BR"?"Folga":lang==="es-419"?"Descanso":"Day off"}</option>
+      <option value="atestado">{lang==="pt-BR"?"Atestado":lang==="es-419"?"Certificado médico":"Medical leave"}</option>
+      <option value="banco de horas">Banco de horas</option>
+      <option value="falta">{lang==="pt-BR"?"Falta":lang==="es-419"?"Ausencia":"Absence"}</option>
+    </select>
+  :k==="rest_person"?
+    <input type="text" value={form.rest_person} onChange={e=>setForm({...form,rest_person:e.target.value})} placeholder={lang==="pt-BR"?"Nome da pessoa":lang==="es-419"?"Nombre de la persona":"Person's name"} required={form.rest_type!=="none"}/>
+  :["incidents","maintenance","next_shift_pending","supervisor_guidance"].includes(k)?
+    <textarea rows="3" value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})}/>
+  :<input required={k==="report_date"||k==="operator_names"} type={k==="report_date"?"date":k==="operator_names"?"text":"number"} step="any" value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})}/>
+  }
+</label>)}
  </div><button type="submit">{t.save}</button>{editing&&<button type="button" className="secondary" onClick={()=>{setEditing(null);setForm(blank)}}>Cancelar edição</button>}</form></section>
  
 <section className="panel">
@@ -165,7 +231,7 @@ async function exportPdf(r){
       <p><b>Hashrate:</b> {r.hashrate_ph??"-"} PH/s · <b>Disponibilidade:</b> {r.availability_pct??"-"}%</p>
       <p><b>Mineradoras:</b> {r.miners_online??"-"} online / {r.miners_offline??"-"} offline · <b>Geradores:</b> {r.generators_running??"-"}/3</p>
       <p><b>Consumo:</b> {r.power_mw??"-"} MW · <b>Mês:</b> {r.month_consumption_kwh??"-"} kWh</p>
-      <p><b>Descanso:</b> {r.day_off||"-"}</p>
+      <p><b>Descanso:</b> {r.day_off==="No"?"Sin descanso":r.day_off?.includes("|")?`${r.day_off.split("|")[0]} — ${r.day_off.split("|").slice(1).join("|")}`:r.day_off||"-"}</p>
       {[["Ocorrências",r.occurrences],["Manutenções",r.maintenance],["Pendências",r.next_shift_pending],["Orientações",r.supervisor_instructions]].map(([a,b])=>
         <p key={a}><b>{a}:</b> {b||"-"}</p>
       )}
