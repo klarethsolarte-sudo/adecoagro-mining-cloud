@@ -26,3 +26,31 @@
     font-size:14px;
   }
 }
+.qr-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.72);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+  padding:20px;
+}
+
+.qr-modal{
+  width:min(420px,100%);
+  text-align:center;
+}
+
+.qr-modal img{
+  width:300px;
+  max-width:100%;
+  height:auto;
+  background:#fff;
+  padding:10px;
+  border-radius:12px;
+}
+
+.qr-modal button{
+  margin:6px;
+}
