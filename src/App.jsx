@@ -301,7 +301,7 @@ async function exportPdf(r){
 </aside>
 
 
-{activeSection==="home"&&<section className="panel"><h2>{t.title}</h2><form onSubmit={save}><div className="fields">
+{activeSection==="home"&&<section className="panel"><h2>{t.title}</h2><form onSubmit={save} lang={lang} spellCheck={true}><div className="fields">
 {fields.map(k=><label key={k} className={["incidents","maintenance","next_shift_pending","supervisor_guidance"].includes(k)?"wide":""}>
   {label(k)}
   {k==="rest_type"?
@@ -313,9 +313,23 @@ async function exportPdf(r){
       <option value="falta">{lang==="pt-BR"?"Falta":lang==="es-419"?"Ausencia":"Absence"}</option>
     </select>
   :k==="rest_person"?
-    <input type="text" value={form.rest_person} onChange={e=>setForm({...form,rest_person:e.target.value})} placeholder={lang==="pt-BR"?"Nome da pessoa":lang==="es-419"?"Nombre de la persona":"Person's name"} required={form.rest_type!=="none"}/>
+   <input
+  type="text"
+  lang={lang}
+  spellCheck={true}
+  value={form.rest_person}
+  onChange={e=>setForm({...form,rest_person:e.target.value})}
+  placeholder={lang==="pt-BR"?"Nome da pessoa":lang==="es-419"?"Nombre de la persona":"Person's name"}
+  required={form.rest_type!=="none"}
+/>
   :["incidents","maintenance","next_shift_pending","supervisor_guidance"].includes(k)?
-    <textarea rows="3" value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})}/>
+    <textarea
+  rows="3"
+  lang={lang}
+  spellCheck={true}
+  value={form[k]}
+  onChange={e=>setForm({...form,[k]:e.target.value})}
+/>
     :k==="availability"?
     <input
       type="number"
