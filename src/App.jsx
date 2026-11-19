@@ -35,6 +35,8 @@ export default function App(){
   const [qrReport,setQrReport]=useState(null);
 const [qrImage,setQrImage]=useState("");
   const [activeSection,setActiveSection]=useState("home");
+  const [profileName,setProfileName]=useState("");
+const [savingProfile,setSavingProfile]=useState(false);
   const t=translations[lang];
 
 const availability = form.miners_online === ""
@@ -50,7 +52,62 @@ const availability = form.miners_online === ""
     setActiveSection("history");
   }
 },[]);
- async function loadProfile(){ const {data,error}=await supabase.from("profiles").select("*").eq("id",session.user.id).maybeSingle(); if(error){setNotice(error.message);return;} setProfile(data); if(data?.status==="approved" || isAdmin){loadReports(); if(isAdmin)loadUsers();} }
+
+
+async function loadProfile(){
+  const {data,error}=await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id",session.user.id)
+    .maybeSingle();
+
+  if(error){
+    setNotice(error.message);
+    return;
+  }
+
+  setProfile(data);
+
+  setProfileName(
+    data?.full_name ||
+    session.user.user_metadata?.full_name ||
+    session.user.user_metadata?.name ||
+    ""
+  );
+
+  if(data?.status==="approved" || isAdmin){
+    loadReports();
+    if(isAdmin)loadUsers();
+  }
+}
+
+async function saveProfile(){
+  const name = profileName.trim();
+
+  if(!name){
+    setNotice("El nombre no puede estar vacío.");
+    return;
+  }
+
+  setSavingProfile(true);
+
+  const {error} = await supabase
+    .from("profiles")
+    .update({full_name:name})
+    .eq("id",session.user.id);
+
+  setSavingProfile(false);
+
+  if(error){
+    setNotice("No se pudo guardar el nombre: "+error.message);
+    return;
+  }
+
+  setProfile({...profile,full_name:name});
+  setNotice("Nombre del perfil actualizado correctamente.");
+}
+
+
 async function loadReports(){
   const sharedId = new URLSearchParams(window.location.search).get("report");
 
@@ -291,13 +348,20 @@ async function exportPdf(r){
       </button>
     }
 
-    <button
+      <button
+      className={activeSection==="profile"?"menu-active":"menu-button"}
+      onClick={()=>setActiveSection("profile")}
+    >
+      👤 Mi perfil
+    </button>
+
+        <button
       className="menu-button"
       onClick={()=>supabase.auth.signOut()}
     >
       🚪 Salir
     </button>
-    </nav>
+  </nav>
 </aside>
 
 
@@ -389,6 +453,43 @@ async function exportPdf(r){
 </section>}
 
  {activeSection==="users"&&isAdmin&&<section className="panel"><h2>{t.admin}</h2><p>Administrador principal: {ADMIN}. Limite planejado: 1 administrador + 9 operadores.</p>{users.map(u=><div className="userrow" key={u.id}><span><b>{u.full_name||u.email}</b><small>{u.email} · {u.status} · {u.role}</small></span><span>{u.role!=="admin"&&<><button onClick={()=>statusChange(u.id,"approved")}>Aprovar</button> <button className="danger" onClick={()=>statusChange(u.id,"blocked")}>Bloquear</button></>}</span></div>)}</section>}
+{activeSection==="profile"&&<section className="panel">
+  <h2>Mi perfil</h2>
+
+  <div className="profile-card">
+    {session?.user?.user_metadata?.avatar_url || session?.user?.user_metadata?.picture
+      ? <img
+          src={session.user.user_metadata.avatar_url || session.user.user_metadata.picture}
+          alt="Foto de perfil"
+          className="profile-photo"
+        />
+      : <div className="profile-photo-placeholder">👤</div>
+    }
+
+    <label>
+      Nombre del perfil
+      <input
+        type="text"
+        value={profileName}
+        onChange={e=>setProfileName(e.target.value)}
+        placeholder="Escribe tu nombre"
+      />
+    </label>
+
+    <label>
+      Correo electrónico
+      <input
+        type="email"
+        value={session?.user?.email||""}
+        readOnly
+      />
+    </label>
+
+    <button onClick={saveProfile} disabled={savingProfile}>
+      {savingProfile?"Guardando...":"Guardar cambios"}
+    </button>
+  </div>
+</section>}
  </>}
     {qrReport&&qrImage&&
   <div className="qr-overlay">
@@ -405,4 +506,50 @@ async function exportPdf(r){
  {notice&&<div className="notice" onClick={()=>setNotice("")}>{notice} ×</div>}
 <footer>ADECOAGRO · Energia em crescimento</footer>
 </main>;
+}
+.profile-card{
+  max-width:480px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:18px;
+  padding:25px;
+  margin-top:20px;
+  background:white;
+  border-radius:14px;
+}
+
+.profile-photo,
+.profile-photo-placeholder{
+  width:120px;
+  height:120px;
+  border-radius:50%;
+  object-fit:cover;
+  border:4px solid #dce9e2;
+}
+
+.profile-photo-placeholder{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:55px;
+  background:#edf3ef;
+}
+
+.profile-card label{
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+}
+
+.profile-card input{
+  width:100%;
+  padding:12px;
+  border:1px solid #ccd8d1;
+  border-radius:8px;
+}
+
+.profile-card button{
+  width:100%;
 }
