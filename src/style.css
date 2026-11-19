@@ -54,3 +54,101 @@
 .qr-modal button{
   margin:6px;
 }
+
+/* ===== MENU LATERAL ADECOAGRO ===== */
+
+.app-layout{
+  max-width:none;
+  width:100%;
+  min-height:100vh;
+  margin:0;
+  padding:20px 24px 20px 285px;
+}
+
+.sidebar{
+  position:fixed;
+  top:0;
+  left:0;
+  bottom:0;
+  width:265px;
+  background:#102a24;
+  color:white;
+  padding:24px 18px;
+  z-index:1000;
+  overflow-y:auto;
+}
+
+.sidebar-user{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding:12px;
+  margin-bottom:24px;
+  overflow-wrap:anywhere;
+}
+
+.sidebar-user strong{
+  font-size:16px;
+  color:white;
+}
+
+.sidebar-user small{
+  font-size:12px;
+  color:#d1dfd2;
+}
+
+.user-avatar{
+  font-size:28px;
+}
+
+.sidebar-menu{
+  display:flex;
+  flex-direction:column;
+  gap:9px;
+}
+
+.sidebar-menu button{
+  width:100%;
+  text-align:left;
+  padding:12px;
+  border-radius:8px;
+  background:transparent;
+  color:white;
+}
+
+.sidebar-menu button:hover,
+.sidebar-menu .menu-active{
+  background:#1b674b;
+  color:white;
+}
+
+/* Adaptación para celulares */
+
+@media(max-width:750px){
+  .app-layout{
+    padding:12px 12px 12px 155px;
+  }
+
+  .sidebar{
+    width:145px;
+    padding:12px 8px;
+  }
+
+  .sidebar-menu button{
+    padding:9px 6px;
+    font-size:11px;
+  }
+
+  .sidebar-user{
+    padding:4px;
+    margin-bottom:14px;
+  }
+
+  .sidebar-user strong{
+    font-size:12px;
+  }
+
+  .sidebar-user small{
+    font-size:10px;
+  }
+}
