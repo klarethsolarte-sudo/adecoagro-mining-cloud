@@ -34,10 +34,17 @@ export default function App(){
  const [form,setForm]=useState(blank), [reports,setReports]=useState([]), [users,setUsers]=useState([]), [editing,setEditing]=useState(null), [notice,setNotice]=useState("");
   const [qrReport,setQrReport]=useState(null);
 const [qrImage,setQrImage]=useState("");
+  const [activeSection,setActiveSection]=useState("home");
  const t=translations[lang];
  const isAdmin = session?.user?.email?.toLowerCase()===ADMIN;
+  const userName = profile?.full_name || session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || session?.user?.email || "Usuario";
  useEffect(()=>{ if(!configured)return; supabase.auth.getSession().then(({data})=>setSession(data.session)); const {data:{subscription}}=supabase.auth.onAuthStateChange((_e,s)=>setSession(s)); return ()=>subscription.unsubscribe(); },[]);
  useEffect(()=>{ if(session) loadProfile(); else {setProfile(null);setReports([]);} },[session]);
+  useEffect(()=>{
+  if(new URLSearchParams(window.location.search).get("report")){
+    setActiveSection("history");
+  }
+},[]);
  async function loadProfile(){ const {data,error}=await supabase.from("profiles").select("*").eq("id",session.user.id).maybeSingle(); if(error){setNotice(error.message);return;} setProfile(data); if(data?.status==="approved" || isAdmin){loadReports(); if(isAdmin)loadUsers();} }
 async function loadReports(){
   const sharedId = new URLSearchParams(window.location.search).get("report");
@@ -225,7 +232,8 @@ async function exportPdf(r){
   })[k];
 }
  if(!configured)return <main className="center"><section className="panel"><h1>ADECOAGRO MINING CLOUD</h1><p>O código está pronto para configurar, mas ainda faltam as credenciais do projeto Supabase.</p><p>Crie um arquivo <code>.env</code> com base em <code>.env.example</code>, preenchendo a URL e a chave publicável do Supabase. Nunca coloque a chave service_role no navegador.</p></section></main>;
- return <main>
+ return <main className="app-layout">
+    
  <header>
   <div className="brand-area">
     <img
@@ -239,7 +247,48 @@ async function exportPdf(r){
     </div>
   </div><div className="tools"><select value={lang} onChange={e=>{setLang(e.target.value);localStorage.setItem("amc-lang",e.target.value)}}><option value="pt-BR">Português</option><option value="es-419">Español</option><option value="en-US">English</option></select>{session&&<button className="secondary" onClick={()=>supabase.auth.signOut()}>{t.logout}</button>}</div></header>
  {!session?<section className="panel login"><h1>ADECOAGRO MINING CLOUD</h1><p>Plataforma de relatórios operacionais</p><button onClick={signIn}>{t.login}</button></section>:!profile?<section className="panel"><p>Carregando perfil...</p></section>:profile.status!=="approved"&&!isAdmin?<section className="panel"><h2>{profile.status==="blocked"?t.blocked:t.pendingStatus}</h2><p>{profile.status==="blocked"?"Entre em contato com o administrador.":t.waiting}</p></section>:<>
- <section className="panel"><h2>{t.title}</h2><form onSubmit={save}><div className="fields">
+   esta seccion <aside className="sidebar">
+  <div className="sidebar-user">
+    <div className="user-avatar">👤</div>
+    <strong>{userName}</strong>
+    <small>{session?.user?.email}</small>
+  </div>
+
+  <nav className="sidebar-menu">
+    <button
+      className={activeSection==="home"?"menu-active":"menu-button"}
+      onClick={()=>setActiveSection("home")}
+    >
+      🏠 Inicio
+    </button>
+
+    <button
+      className={activeSection==="history"?"menu-active":"menu-button"}
+      onClick={()=>setActiveSection("history")}
+    >
+      📁 Histórico general
+    </button>
+
+    {isAdmin&&
+      <button
+        className={activeSection==="users"?"menu-active":"menu-button"}
+        onClick={()=>setActiveSection("users")}
+      >
+        👥 Administración de usuarios
+      </button>
+    }
+
+    <button
+      className="menu-button"
+      onClick={()=>supabase.auth.signOut()}
+    >
+      🚪 Salir
+    </button>
+    </nav>
+</aside>
+
+
+{activeSection==="home"&&<section className="panel"><h2>{t.title}</h2><form onSubmit={save}><div className="fields">
 {fields.map(k=><label key={k} className={["incidents","maintenance","next_shift_pending","supervisor_guidance"].includes(k)?"wide":""}>
   {label(k)}
   {k==="rest_type"?
@@ -257,10 +306,10 @@ async function exportPdf(r){
   :<input required={k==="report_date"||k==="operator_names"} type={k==="report_date"?"date":k==="operator_names"?"text":"number"} step="any" value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})}/>
   }
 </label>)}
- </div><button type="submit">{t.save}</button>{editing&&<button type="button" className="secondary" onClick={()=>{setEditing(null);setForm(blank)}}>Cancelar edição</button>}</form></section>
+ </div><button type="submit">{t.save}</button>{editing&&<button type="button" className="secondary" onClick={()=>{setEditing(null);setForm(blank)}}>Cancelar edição</button>}</form></section>}
  
-<section className="panel">
-  <h2>{t.history}</h2>
+{activeSection==="history"&&<section className="panel">
+  <h2>Histórico general</h2>
   {reports.length===0?<p>{t.noReports}</p>:reports.map(r=>
     <article className="report" id={`report-${r.id}`} key={r.id}>
       <div className="reporthead">
@@ -283,9 +332,9 @@ async function exportPdf(r){
       )}
     </article>
   )}
-</section>
+</section>}
 
- {isAdmin&&<section className="panel"><h2>{t.admin}</h2><p>Administrador principal: {ADMIN}. Limite planejado: 1 administrador + 9 operadores.</p>{users.map(u=><div className="userrow" key={u.id}><span><b>{u.full_name||u.email}</b><small>{u.email} · {u.status} · {u.role}</small></span><span>{u.role!=="admin"&&<><button onClick={()=>statusChange(u.id,"approved")}>Aprovar</button> <button className="danger" onClick={()=>statusChange(u.id,"blocked")}>Bloquear</button></>}</span></div>)}</section>}
+ {activeSection==="users"&&isAdmin&&<section className="panel"><h2>{t.admin}</h2><p>Administrador principal: {ADMIN}. Limite planejado: 1 administrador + 9 operadores.</p>{users.map(u=><div className="userrow" key={u.id}><span><b>{u.full_name||u.email}</b><small>{u.email} · {u.status} · {u.role}</small></span><span>{u.role!=="admin"&&<><button onClick={()=>statusChange(u.id,"approved")}>Aprovar</button> <button className="danger" onClick={()=>statusChange(u.id,"blocked")}>Bloquear</button></>}</span></div>)}</section>}
  </>}
     {qrReport&&qrImage&&
   <div className="qr-overlay">
