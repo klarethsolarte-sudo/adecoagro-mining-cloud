@@ -35,7 +35,12 @@ export default function App(){
   const [qrReport,setQrReport]=useState(null);
 const [qrImage,setQrImage]=useState("");
   const [activeSection,setActiveSection]=useState("home");
- const t=translations[lang];
+  const t=translations[lang];
+
+const availability = form.miners_online === ""
+  ? ""
+  : ((Number(form.miners_online) / 1280) * 100).toFixed(2);
+ 
  const isAdmin = session?.user?.email?.toLowerCase()===ADMIN;
   const userName = profile?.full_name || session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || session?.user?.email || "Usuario";
  useEffect(()=>{ if(!configured)return; supabase.auth.getSession().then(({data})=>setSession(data.session)); const {data:{subscription}}=supabase.auth.onAuthStateChange((_e,s)=>setSession(s)); return ()=>subscription.unsubscribe(); },[]);
@@ -70,6 +75,13 @@ async function signIn(){
 }
  async function save(e){
   e.preventDefault();
+     const online = Number(form.miners_online || 0);
+  const offline = Number(form.miners_offline || 0);
+
+  if(online + offline > 1280){
+    setNotice("Error: las mineradoras operativas y offline no pueden superar las 1280 unidades.");
+    return;
+  }
 
   if(form.rest_type!=="none" && !form.rest_person.trim()){
     setNotice("Informe o nome da pessoa.");
@@ -85,7 +97,7 @@ async function signIn(){
     hashrate_ph:num(form.hashrate),
     miners_online:num(form.miners_online),
     miners_offline:num(form.miners_offline),
-    availability_pct:num(form.availability),
+    availability_pct:num(availability),
     power_mw:num(form.power_mw),
     month_consumption_kwh:num(form.monthly_kwh),
     generators_running:num(form.generators_online),
@@ -304,7 +316,34 @@ async function exportPdf(r){
     <input type="text" value={form.rest_person} onChange={e=>setForm({...form,rest_person:e.target.value})} placeholder={lang==="pt-BR"?"Nome da pessoa":lang==="es-419"?"Nombre de la persona":"Person's name"} required={form.rest_type!=="none"}/>
   :["incidents","maintenance","next_shift_pending","supervisor_guidance"].includes(k)?
     <textarea rows="3" value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})}/>
-  :<input required={k==="report_date"||k==="operator_names"} type={k==="report_date"?"date":k==="operator_names"?"text":"number"} step="any" value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})}/>
+    :k==="availability"?
+    <input
+      type="number"
+      value={availability}
+      readOnly
+      placeholder="Calculado automáticamente"
+    />
+  :k==="generators_online"?
+    <select
+      value={form.generators_online}
+      onChange={e=>setForm({...form,generators_online:e.target.value})}
+      required
+    >
+      <option value="">Seleccionar</option>
+      <option value="0">0/3</option>
+      <option value="1">1/3</option>
+      <option value="2">2/3</option>
+      <option value="3">3/3</option>
+        </select>
+  :<input
+    required={k==="report_date"||k==="operator_names"}
+    type={k==="report_date"?"date":k==="operator_names"?"text":"number"}
+    min={["miners_online","miners_offline"].includes(k)?0:undefined}
+    max={["miners_online","miners_offline"].includes(k)?1280:undefined}
+    step={["miners_online","miners_offline"].includes(k)?1:"any"}
+    value={form[k]}
+    onChange={e=>setForm({...form,[k]:e.target.value})}
+  />
   }
 </label>)}
  </div><button type="submit">{t.save}</button>{editing&&<button type="button" className="secondary" onClick={()=>{setEditing(null);setForm(blank)}}>Cancelar edição</button>}</form></section>}
