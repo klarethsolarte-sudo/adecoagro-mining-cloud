@@ -132,7 +132,18 @@ async function exportPdf(r){
  function label(k){return ({report_date:t.date,operator_names:t.operator,is_rest:t.rest,hashrate:t.hash,miners_online:t.online,miners_offline:t.offline,availability:t.availability,power_mw:t.power,monthly_kwh:t.month,generators_online:t.generators,incidents:t.events,maintenance:t.maintenance,next_shift_pending:t.pending,supervisor_guidance:t.guidance})[k];}
  if(!configured)return <main className="center"><section className="panel"><h1>ADECOAGRO MINING CLOUD</h1><p>O código está pronto para configurar, mas ainda faltam as credenciais do projeto Supabase.</p><p>Crie um arquivo <code>.env</code> com base em <code>.env.example</code>, preenchendo a URL e a chave publicável do Supabase. Nunca coloque a chave service_role no navegador.</p></section></main>;
  return <main>
- <header><div><div className="brand">ADECOAGRO <span>MINING CLOUD</span></div><small>Energia em crescimento</small></div><div className="tools"><select value={lang} onChange={e=>{setLang(e.target.value);localStorage.setItem("amc-lang",e.target.value)}}><option value="pt-BR">Português</option><option value="es-419">Español</option><option value="en-US">English</option></select>{session&&<button className="secondary" onClick={()=>supabase.auth.signOut()}>{t.logout}</button>}</div></header>
+ <header>
+  <div className="brand-area">
+    <img
+      src="/adeco-energia.jpg.jpg"
+      alt="ADECO ENERGIA"
+      className="adeco-logo"
+    />
+    <div>
+      <div className="brand">ADECOAGRO <span>MINING CLOUD</span></div>
+      <small>Energia em crescimento</small>
+    </div>
+  </div><div className="tools"><select value={lang} onChange={e=>{setLang(e.target.value);localStorage.setItem("amc-lang",e.target.value)}}><option value="pt-BR">Português</option><option value="es-419">Español</option><option value="en-US">English</option></select>{session&&<button className="secondary" onClick={()=>supabase.auth.signOut()}>{t.logout}</button>}</div></header>
  {!session?<section className="panel login"><h1>ADECOAGRO MINING CLOUD</h1><p>Plataforma de relatórios operacionais</p><button onClick={signIn}>{t.login}</button></section>:!profile?<section className="panel"><p>Carregando perfil...</p></section>:profile.status!=="approved"&&!isAdmin?<section className="panel"><h2>{profile.status==="blocked"?t.blocked:t.pendingStatus}</h2><p>{profile.status==="blocked"?"Entre em contato com o administrador.":t.waiting}</p></section>:<>
  <section className="panel"><h2>{t.title}</h2><form onSubmit={save}><div className="fields">
  {fields.map(k=><label key={k} className={["incidents","maintenance","next_shift_pending","supervisor_guidance"].includes(k)?"wide":""}>{label(k)}{k==="is_rest"?<input type="checkbox" checked={!!form[k]} onChange={e=>setForm({...form,[k]:e.target.checked})}/>:["incidents","maintenance","next_shift_pending","supervisor_guidance"].includes(k)?<textarea rows="3" value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})}/>:<input required={k==="report_date"||k==="operator_names"} type={k==="report_date"?"date":k==="operator_names"?"text":"number"} step="any" value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})}/>}</label>)}
