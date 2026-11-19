@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { toJpeg } from "html-to-image";
 import jsPDF from "jspdf";
+import QRCode from "qrcode";
 import { configured, supabase } from "./supabase";
 
 const ADMIN = "klarethsolarte@gmail.com";
@@ -31,14 +32,35 @@ const fields = ["report_date","operator_names","rest_type","rest_person","hashra
 export default function App(){
  const [session,setSession]=useState(null), [profile,setProfile]=useState(null), [lang,setLang]=useState(localStorage.getItem("amc-lang")||"pt-BR");
  const [form,setForm]=useState(blank), [reports,setReports]=useState([]), [users,setUsers]=useState([]), [editing,setEditing]=useState(null), [notice,setNotice]=useState("");
+  const [qrReport,setQrReport]=useState(null);
+const [qrImage,setQrImage]=useState("");
  const t=translations[lang];
  const isAdmin = session?.user?.email?.toLowerCase()===ADMIN;
  useEffect(()=>{ if(!configured)return; supabase.auth.getSession().then(({data})=>setSession(data.session)); const {data:{subscription}}=supabase.auth.onAuthStateChange((_e,s)=>setSession(s)); return ()=>subscription.unsubscribe(); },[]);
  useEffect(()=>{ if(session) loadProfile(); else {setProfile(null);setReports([]);} },[session]);
  async function loadProfile(){ const {data,error}=await supabase.from("profiles").select("*").eq("id",session.user.id).maybeSingle(); if(error){setNotice(error.message);return;} setProfile(data); if(data?.status==="approved" || isAdmin){loadReports(); if(isAdmin)loadUsers();} }
- async function loadReports(){const {data,error}=await supabase.from("daily_reports").select("*").order("report_date",{ascending:false}); if(error)setNotice(error.message); else setReports(data||[]);}
+async function loadReports(){
+  const sharedId = new URLSearchParams(window.location.search).get("report");
+
+  let query = supabase.from("daily_reports").select("*");
+
+  if(sharedId){
+    query = query.eq("id",sharedId);
+  }
+
+  const {data,error} = await query.order("report_date",{ascending:false});
+
+  if(error)setNotice(error.message);
+  else setReports(data||[]);
+}
  async function loadUsers(){const {data,error}=await supabase.from("profiles").select("id,email,full_name,role,status,created_at").order("created_at"); if(error)setNotice(error.message); else setUsers(data||[]);}
- async function signIn(){const {error}=await supabase.auth.signInWithOAuth({provider:"google",options:{redirectTo:window.location.origin}}); if(error)setNotice(error.message);}
+async function signIn(){
+  const {error}=await supabase.auth.signInWithOAuth({
+    provider:"google",
+    options:{redirectTo:window.location.href}
+  });
+  if(error)setNotice(error.message);
+}
  async function save(e){
   e.preventDefault();
 
@@ -125,6 +147,28 @@ if(editing){
   });
 
   window.scrollTo({top:0,behavior:"smooth"});
+}
+  async function generateQR(r){
+  try{
+    const url = `${window.location.origin}/?report=${r.id}`;
+    const image = await QRCode.toDataURL(url,{
+      width:300,
+      margin:2,
+      errorCorrectionLevel:"H"
+    });
+    setQrImage(image);
+    setQrReport(r);
+  }catch(error){
+    setNotice("Error al generar el código QR: "+error.message);
+  }
+}
+
+function shareWhatsApp(r){
+  const url = `${window.location.origin}/?report=${r.id}`;
+  window.open(
+    `https://wa.me/?text=${encodeURIComponent("ADECOAGRO MINING CLOUD - Informe operacional: "+url)}`,
+    "_blank"
+  );
 }
 async function exportPdf(r){
   const doc=new jsPDF();
@@ -224,6 +268,8 @@ async function exportPdf(r){
         <div>
           <button className="secondary" onClick={()=>exportPdf(r)}>PDF</button>
           <button className="secondary" onClick={()=>exportJpg(r)}>JPG</button>
+          <button className="secondary" onClick={()=>generateQR(r)}>QR</button>
+<button className="secondary" onClick={()=>shareWhatsApp(r)}>WhatsApp</button>
           {(r.created_by===session.user.id||isAdmin)&&
             <button className="secondary" onClick={()=>edit(r)}>Editar</button>}
         </div>
@@ -241,6 +287,18 @@ async function exportPdf(r){
 
  {isAdmin&&<section className="panel"><h2>{t.admin}</h2><p>Administrador principal: {ADMIN}. Limite planejado: 1 administrador + 9 operadores.</p>{users.map(u=><div className="userrow" key={u.id}><span><b>{u.full_name||u.email}</b><small>{u.email} · {u.status} · {u.role}</small></span><span>{u.role!=="admin"&&<><button onClick={()=>statusChange(u.id,"approved")}>Aprovar</button> <button className="danger" onClick={()=>statusChange(u.id,"blocked")}>Bloquear</button></>}</span></div>)}</section>}
  </>}
+    {qrReport&&qrImage&&
+  <div className="qr-overlay">
+    <section className="panel qr-modal">
+      <h2>Compartir informe</h2>
+      <p>{qrReport.report_date} · {qrReport.operators}</p>
+      <img src={qrImage} alt="Código QR del informe" />
+      <p>Escanea para abrir este informe.</p>
+      <button onClick={()=>shareWhatsApp(qrReport)}>Compartir por WhatsApp</button>
+      <button className="secondary" onClick={()=>{setQrReport(null);setQrImage("");}}>Cerrar</button>
+    </section>
+  </div>
+}
  {notice&&<div className="notice" onClick={()=>setNotice("")}>{notice} ×</div>}
 <footer>ADECOAGRO · Energia em crescimento</footer>
 </main>;
