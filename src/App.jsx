@@ -247,6 +247,7 @@ async function exportPdf(r){
     </div>
   </div><div className="tools"><select value={lang} onChange={e=>{setLang(e.target.value);localStorage.setItem("amc-lang",e.target.value)}}><option value="pt-BR">Português</option><option value="es-419">Español</option><option value="en-US">English</option></select></div></header>
  {!session?<section className="panel login"><h1>ADECOAGRO MINING CLOUD</h1><p>Plataforma de relatórios operacionais</p><button onClick={signIn}>{t.login}</button></section>:!profile?<section className="panel"><p>Carregando perfil...</p></section>:profile.status!=="approved"&&!isAdmin?<section className="panel"><h2>{profile.status==="blocked"?t.blocked:t.pendingStatus}</h2><p>{profile.status==="blocked"?"Entre em contato com o administrador.":t.waiting}</p></section>:<>
+   
    <aside className="sidebar">
   <div className="sidebar-user">
     <div className="user-avatar">👤</div>
