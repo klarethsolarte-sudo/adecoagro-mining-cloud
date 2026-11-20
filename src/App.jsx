@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { toJpeg } from "html-to-image";
 import jsPDF from "jspdf";
@@ -298,6 +297,11 @@ export default function App() {
 
   // Fotografía de perfil
   const [photoLoading, setPhotoLoading] = useState(false);
+
+  // Administración de contraseñas temporales
+  const [temporaryPasswordUser, setTemporaryPasswordUser] = useState("");
+  const [temporaryPassword, setTemporaryPassword] = useState("");
+  const [temporaryPasswordLoading, setTemporaryPasswordLoading] = useState(false);
 
   const t = translations[lang] || translations["pt-BR"];
 
@@ -865,6 +869,76 @@ export default function App() {
     } else {
       setNotice("Status atualizado.");
       await loadUsers();
+    }
+  }
+
+  // Asignar contraseña temporal a un operador mediante la Edge Function.
+  // La función del servidor verifica que quien realiza la operación sea el admin.
+  async function assignTemporaryPassword(id) {
+    if (!isAdmin) {
+      setNotice("No tienes autorización para asignar contraseñas.");
+      return;
+    }
+
+    if (temporaryPassword.length < 12) {
+      setNotice("La contraseña temporal debe tener al menos 12 caracteres.");
+      return;
+    }
+
+    if (temporaryPassword.length > 128) {
+      setNotice("La contraseña no puede superar 128 caracteres.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "¿Confirmas asignar esta contraseña temporal? El operador deberá crear una contraseña nueva antes de utilizar el sistema."
+    );
+
+    if (!confirmed) return;
+
+    setTemporaryPasswordLoading(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "admin-manage-user",
+        {
+          body: {
+            action: "set_temp_password",
+            targetUserId: id,
+            temporaryPassword
+          }
+        }
+      );
+
+      if (error) {
+        setNotice(
+          "No se pudo asignar la contraseña temporal: " + error.message
+        );
+        return;
+      }
+
+      if (!data?.success) {
+        setNotice(
+          data?.message || "La función no pudo completar la operación."
+        );
+        return;
+      }
+
+      setTemporaryPassword("");
+      setTemporaryPasswordUser("");
+      setNotice(
+        data.message ||
+        "Contraseña temporal asignada correctamente."
+      );
+
+      await loadUsers();
+    } catch (error) {
+      setNotice(
+        "Error al comunicarse con la función administrativa: " +
+        (error?.message || "Error desconocido")
+      );
+    } finally {
+      setTemporaryPasswordLoading(false);
     }
   }
 
@@ -1903,7 +1977,7 @@ export default function App() {
 
               {users.map(u => (
                 <div className="userrow" key={u.id}>
-                  <span>
+                  <div className="userrow-main">
                     <b>{u.full_name || u.email}</b>
                     <small>
                       {u.email} · {u.status} · {u.role}
@@ -1911,9 +1985,9 @@ export default function App() {
                         ? " · Cambio de contraseña pendiente"
                         : ""}
                     </small>
-                  </span>
+                  </div>
 
-                  <span>
+                  <div className="userrow-actions">
                     {u.role !== "admin" && (
                       <>
                         <button onClick={() => statusChange(u.id, "approved")}>
@@ -1926,9 +2000,69 @@ export default function App() {
                         >
                           Bloquear
                         </button>
+
+                        <button
+                          type="button"
+                          className="secondary"
+                          onClick={() => {
+                            setTemporaryPasswordUser(
+                              temporaryPasswordUser === u.id ? "" : u.id
+                            );
+                            setTemporaryPassword("");
+                          }}
+                        >
+                          Asignar contraseña temporal
+                        </button>
+
+                        {temporaryPasswordUser === u.id && (
+                          <div className="temporary-password-form">
+                            <label>
+                              Contraseña temporal (mínimo 12 caracteres)
+                              <input
+                                type="password"
+                                autoComplete="new-password"
+                                minLength={12}
+                                maxLength={128}
+                                value={temporaryPassword}
+                                onChange={e => setTemporaryPassword(e.target.value)}
+                                placeholder="Escribe una contraseña temporal"
+                              />
+                            </label>
+
+                            <button
+                              type="button"
+                              onClick={() => assignTemporaryPassword(u.id)}
+                              disabled={
+                                temporaryPasswordLoading ||
+                                temporaryPassword.length < 12
+                              }
+                            >
+                              {temporaryPasswordLoading
+                                ? "Asignando..."
+                                : "Confirmar contraseña temporal"}
+                            </button>
+
+                            <button
+                              type="button"
+                              className="secondary"
+                              onClick={() => {
+                                setTemporaryPasswordUser("");
+                                setTemporaryPassword("");
+                              }}
+                              disabled={temporaryPasswordLoading}
+                            >
+                              Cancelar
+                            </button>
+
+                            <small>
+                              El operador tendrá que crear su propia contraseña
+                              antes de volver a utilizar el sistema.
+                            </small>
+                          </div>
+                        )}
                       </>
                     )}
-                  </span>
+                  </div>
                 </div>
               ))}
             </section>
@@ -2138,4 +2272,3 @@ export default function App() {
     </main>
   );
 }
-
