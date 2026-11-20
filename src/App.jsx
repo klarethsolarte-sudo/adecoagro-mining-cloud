@@ -280,38 +280,35 @@ export default function App() {
   const [profileName, setProfileName] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
 
-  // Autenticación
-  const [authMode, setAuthMode] = useState("login");
+  // Autenticación por correo y contraseña
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
-  const [authPasswordConfirm, setAuthPasswordConfirm] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
-  const [recoveryMode, setRecoveryMode] = useState(false);
-  const [recoveryEmail, setRecoveryEmail] = useState("");
-  const [passwordSetupMode, setPasswordSetupMode] = useState(false);
-  const [mustChangePassword, setMustChangePassword] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
-  const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
 
-  // Perfil y foto
-  const [selectedPhoto, setSelectedPhoto] = useState(null);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  // Recuperación y establecimiento de contraseña
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
+  // Cambio de correo
   const [newEmail, setNewEmail] = useState("");
-  const [changingEmail, setChangingEmail] = useState(false);
-  const [lastSignIn, setLastSignIn] = useState("");
+  const [emailLoading, setEmailLoading] = useState(false);
+
+  // Fotografía de perfil
+  const [photoLoading, setPhotoLoading] = useState(false);
 
   const t = translations[lang] || translations["pt-BR"];
-
-  const isAdmin =
-    profile?.role === "admin" ||
-    session?.user?.email?.toLowerCase() === ADMIN;
 
   const availability = form.miners_online === ""
     ? "0.00"
     : (
         (Number(form.miners_online) / TOTAL_MINERS) * 100
       ).toFixed(2);
+
+  const isAdmin =
+    session?.user?.email?.toLowerCase() === ADMIN;
 
   const userName =
     profile?.full_name ||
@@ -320,33 +317,33 @@ export default function App() {
     session?.user?.email ||
     "Usuario";
 
-  const avatarUrl =
+  const profilePhoto =
     profile?.avatar_url ||
     session?.user?.user_metadata?.avatar_url ||
     session?.user?.user_metadata?.picture ||
     "";
 
-  const passwordConfigured =
-    session?.user?.user_metadata?.password_configured === true;
+  const mustChangePassword =
+    Boolean(profile?.must_change_password);
 
   useEffect(() => {
     if (!configured) return;
 
-    let mounted = true;
+    const hash = new URLSearchParams(
+      window.location.hash.replace(/^#/, "")
+    );
+
+    if (hash.get("type") === "recovery") {
+      setRecoveryMode(true);
+    }
 
     supabase.auth.getSession().then(({ data, error }) => {
-      if (!mounted) return;
-
       if (error) {
         setNotice(error.message);
         return;
       }
 
       setSession(data.session);
-
-      if (data.session?.user?.last_sign_in_at) {
-        setLastSignIn(data.session.user.last_sign_in_at);
-      }
     });
 
     const {
@@ -356,27 +353,10 @@ export default function App() {
 
       if (event === "PASSWORD_RECOVERY") {
         setRecoveryMode(true);
-        setPasswordSetupMode(false);
-      }
-
-      if (event === "SIGNED_OUT") {
-        setProfile(null);
-        setReports([]);
-        setUsers([]);
-        setRecoveryMode(false);
-        setPasswordSetupMode(false);
-        setMustChangePassword(false);
-      }
-
-      if (newSession?.user?.last_sign_in_at) {
-        setLastSignIn(newSession.user.last_sign_in_at);
       }
     });
 
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -387,7 +367,7 @@ export default function App() {
       setReports([]);
       setUsers([]);
     }
-  }, [session?.user?.id]);
+  }, [session]);
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("report")) {
@@ -395,36 +375,19 @@ export default function App() {
     }
   }, []);
 
-  useEffect(() => {
-    if (!session || !profile) return;
-
-    const required = profile.must_change_password === true;
-    setMustChangePassword(required);
-
-    const needsInitialPassword =
-      session.user.app_metadata?.provider === "google" &&
-      session.user.user_metadata?.password_configured !== true;
-
-    if (required) {
-      setPasswordSetupMode(false);
-    } else if (needsInitialPassword) {
-      setPasswordSetupMode(true);
-    } else {
-      setPasswordSetupMode(false);
-    }
-  }, [session?.user?.id, profile]);
-
   async function loadProfile() {
-    if (!session?.user?.id) return;
+    const currentSession = session;
+
+    if (!currentSession?.user?.id) return;
 
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
-      .eq("id", session.user.id)
+      .eq("id", currentSession.user.id)
       .maybeSingle();
 
     if (error) {
-      setNotice("No se pudo cargar el perfil: " + error.message);
+      setNotice(error.message);
       return;
     }
 
@@ -432,354 +395,29 @@ export default function App() {
 
     setProfileName(
       data?.full_name ||
-      session.user.user_metadata?.full_name ||
-      session.user.user_metadata?.name ||
+      currentSession.user.user_metadata?.full_name ||
+      currentSession.user.user_metadata?.name ||
       ""
     );
 
-    setNewEmail(session.user.email || "");
-
-    if (data?.status === "approved" || data?.role === "admin") {
+    if (
+      data?.status === "approved" &&
+      !data?.must_change_password
+    ) {
       await loadReports();
 
-      if (data?.role === "admin" || session.user.email?.toLowerCase() === ADMIN) {
+      if (
+        currentSession.user.email?.toLowerCase() === ADMIN
+      ) {
         await loadUsers();
       }
     }
   }
 
-  async function saveProfile() {
-    if (!session?.user) return;
-
-    const name = profileName.trim();
-
-    if (!name) {
-      setNotice("El nombre no puede estar vacío.");
-      return;
-    }
-
-    setSavingProfile(true);
-
-    const { error } = await supabase.rpc("update_my_profile", {
-      p_full_name: name,
-      p_avatar_url: profile?.avatar_url || null
-    });
-
-    setSavingProfile(false);
-
-    if (error) {
-      setNotice("No se pudo guardar el perfil: " + error.message);
-      return;
-    }
-
-    setProfile(previous => ({
-      ...previous,
-      full_name: name
-    }));
-
-    setNotice("Perfil actualizado correctamente.");
-  }
-
-  async function uploadProfilePhoto(event) {
-    const file = event.target.files?.[0];
-    if (!file || !session?.user?.id) return;
-
-    if (!file.type.startsWith("image/")) {
-      setNotice("Selecciona un archivo de imagen válido.");
-      event.target.value = "";
-      return;
-    }
-
-    if (file.size > MAX_PHOTO_SIZE) {
-      setNotice("La foto no puede superar 3 MB.");
-      event.target.value = "";
-      return;
-    }
-
-    const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
-
-    if (!["jpg", "jpeg", "png", "webp"].includes(extension)) {
-      setNotice("Formato permitido: JPG, PNG o WEBP.");
-      event.target.value = "";
-      return;
-    }
-
-    setUploadingPhoto(true);
-
-    const path = `${session.user.id}/avatar.${extension}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from(PHOTO_BUCKET)
-      .upload(path, file, {
-        upsert: true,
-        contentType: file.type,
-        cacheControl: "3600"
-      });
-
-    if (uploadError) {
-      setUploadingPhoto(false);
-      setNotice("No se pudo subir la foto: " + uploadError.message);
-      return;
-    }
-
-    const { data } = supabase.storage
-      .from(PHOTO_BUCKET)
-      .getPublicUrl(path);
-
-    const publicUrl = `${data.publicUrl}?v=${Date.now()}`;
-
-    const { error: profileError } = await supabase.rpc(
-      "update_my_profile",
-      {
-        p_full_name: profileName.trim() || userName,
-        p_avatar_url: publicUrl
-      }
-    );
-
-    setUploadingPhoto(false);
-
-    if (profileError) {
-      setNotice("La foto se subió, pero no se pudo guardar en el perfil: " + profileError.message);
-      return;
-    }
-
-    setProfile(previous => ({
-      ...previous,
-      avatar_url: publicUrl,
-      full_name: profileName.trim() || previous?.full_name
-    }));
-
-    setSelectedPhoto(null);
-    setNotice("Foto de perfil actualizada correctamente.");
-    event.target.value = "";
-  }
-
-  async function requestEmailChange() {
-    if (!newEmail.trim()) {
-      setNotice("Escribe el nuevo correo electrónico.");
-      return;
-    }
-
-    if (newEmail.trim().toLowerCase() === session?.user?.email?.toLowerCase()) {
-      setNotice("El correo nuevo es igual al actual.");
-      return;
-    }
-
-    setChangingEmail(true);
-
-    const { error } = await supabase.auth.updateUser({
-      email: newEmail.trim()
-    });
-
-    setChangingEmail(false);
-
-    if (error) {
-      setNotice("No se pudo solicitar el cambio de correo: " + error.message);
-      return;
-    }
-
-    setNotice(
-      "Solicitud enviada. Revisa el nuevo correo y confirma el enlace de verificación. El cambio no se completará hasta verificarlo."
-    );
-  }
-
-  async function signInGoogle() {
-    setAuthLoading(true);
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: window.location.origin
-      }
-    });
-
-    if (error) {
-      setAuthLoading(false);
-      setNotice(error.message);
-    }
-  }
-
-  async function signInPassword(event) {
-    event.preventDefault();
-
-    if (!authEmail.trim() || !authPassword) {
-      setNotice("Introduce tu correo y contraseña.");
-      return;
-    }
-
-    setAuthLoading(true);
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: authEmail.trim(),
-      password: authPassword
-    });
-
-    setAuthLoading(false);
-
-    if (error) {
-      setNotice("No se pudo iniciar sesión: " + error.message);
-      return;
-    }
-
-    setSession(data.session);
-    setAuthPassword("");
-  }
-
-  async function sendRecoveryEmail(event) {
-    event.preventDefault();
-
-    if (!recoveryEmail.trim()) {
-      setNotice("Introduce el correo electrónico de tu cuenta.");
-      return;
-    }
-
-    setAuthLoading(true);
-
-    const { error } = await supabase.auth.resetPasswordForEmail(
-      recoveryEmail.trim(),
-      {
-        redirectTo: window.location.origin
-      }
-    );
-
-    setAuthLoading(false);
-
-    if (error) {
-      setNotice("No se pudo enviar el enlace: " + error.message);
-      return;
-    }
-
-    setNotice(
-      "Si el correo está registrado, recibirás un enlace seguro para recuperar tu acceso. Revisa también la carpeta de spam."
-    );
-
-    setRecoveryMode(false);
-  }
-
-  async function updateOwnPassword(event) {
-    event.preventDefault();
-
-    if (newPassword.length < 8) {
-      setNotice("La contraseña debe tener al menos 8 caracteres.");
-      return;
-    }
-
-    if (newPassword !== newPasswordConfirm) {
-      setNotice("Las contraseñas no coinciden.");
-      return;
-    }
-
-    setAuthLoading(true);
-
-    const { data, error } = await supabase.auth.updateUser({
-      password: newPassword,
-      data: {
-        ...session.user.user_metadata,
-        password_configured: true
-      }
-    });
-
-    if (error) {
-      setAuthLoading(false);
-      setNotice("No se pudo actualizar la contraseña: " + error.message);
-      return;
-    }
-
-    if (mustChangePassword) {
-      const { error: completionError } = await supabase.rpc(
-        "complete_password_change"
-      );
-
-      if (completionError) {
-        setAuthLoading(false);
-        setNotice(
-          "La contraseña se actualizó, pero no se pudo completar la autorización: " +
-          completionError.message
-        );
-        return;
-      }
-
-      setMustChangePassword(false);
-      setProfile(previous => ({
-        ...previous,
-        must_change_password: false
-      }));
-    }
-
-    setSession(data.session || session);
-    setNewPassword("");
-    setNewPasswordConfirm("");
-    setCurrentPassword("");
-    setAuthLoading(false);
-    setRecoveryMode(false);
-    setPasswordSetupMode(false);
-
-    setNotice("Contraseña actualizada correctamente.");
-
-    await loadProfile();
-  }
-
-  async function changeOwnPassword(event) {
-    event.preventDefault();
-
-    if (!currentPassword) {
-      setNotice("Introduce tu contraseña actual.");
-      return;
-    }
-
-    if (newPassword.length < 8) {
-      setNotice("La nueva contraseña debe tener al menos 8 caracteres.");
-      return;
-    }
-
-    if (newPassword !== newPasswordConfirm) {
-      setNotice("Las contraseñas nuevas no coinciden.");
-      return;
-    }
-
-    setAuthLoading(true);
-
-    // Comprobar la contraseña actual antes de cambiarla.
-    const { error: verifyError } = await supabase.auth.signInWithPassword({
-      email: session.user.email,
-      password: currentPassword
-    });
-
-    if (verifyError) {
-      setAuthLoading(false);
-      setNotice("La contraseña actual no es correcta.");
-      return;
-    }
-
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword
-    });
-
-    setAuthLoading(false);
-
-    if (error) {
-      setNotice("No se pudo cambiar la contraseña: " + error.message);
-      return;
-    }
-
-    setCurrentPassword("");
-    setNewPassword("");
-    setNewPasswordConfirm("");
-    setNotice("Contraseña cambiada correctamente.");
-  }
-
-  async function logout() {
-    await supabase.auth.signOut();
-    setSession(null);
-    setProfile(null);
-    setPasswordSetupMode(false);
-    setMustChangePassword(false);
-    setRecoveryMode(false);
-    setActiveSection("home");
-  }
-
   async function loadReports() {
-    const sharedId = new URLSearchParams(window.location.search).get("report");
+    const sharedId = new URLSearchParams(
+      window.location.search
+    ).get("report");
 
     let query = supabase.from("daily_reports").select("*");
 
@@ -812,8 +450,294 @@ export default function App() {
     }
   }
 
+  // Acceso con Google
+  async function signInGoogle() {
+    setAuthLoading(true);
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin
+      }
+    });
+
+    if (error) {
+      setNotice(error.message);
+      setAuthLoading(false);
+    }
+  }
+
+  // Acceso con correo y contraseña
+  async function signInEmail(e) {
+    e.preventDefault();
+
+    if (!authEmail.trim() || !authPassword) {
+      setNotice("Introduce tu correo y contraseña.");
+      return;
+    }
+
+    setAuthLoading(true);
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: authEmail.trim(),
+      password: authPassword
+    });
+
+    setAuthLoading(false);
+
+    if (error) {
+      setNotice("No se pudo iniciar sesión: " + error.message);
+      return;
+    }
+
+    setAuthPassword("");
+  }
+
+  // Registro inicial: se mantiene exclusivamente con Google.
+  // La contraseña se establece posteriormente en el mismo usuario.
+
+  // Recuperar contraseña por correo
+  async function recoverPassword() {
+    const email = authEmail.trim();
+
+    if (!email) {
+      setNotice("Introduce el correo electrónico de tu cuenta.");
+      return;
+    }
+
+    setAuthLoading(true);
+
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      email,
+      {
+        redirectTo: window.location.origin
+      }
+    );
+
+    setAuthLoading(false);
+
+    if (error) {
+      setNotice("No se pudo enviar el correo: " + error.message);
+      return;
+    }
+
+    setNotice(
+      "Si existe una cuenta con ese correo, recibirás un enlace para recuperar tu contraseña."
+    );
+  }
+
+  // Establecer o cambiar contraseña propia
+  async function updateOwnPassword(e) {
+    e?.preventDefault();
+
+    if (newPassword.length < 8) {
+      setNotice("La contraseña debe tener al menos 8 caracteres.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setNotice("Las contraseñas no coinciden.");
+      return;
+    }
+
+    setPasswordLoading(true);
+
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+
+    if (error) {
+      setPasswordLoading(false);
+      setNotice("No se pudo actualizar la contraseña: " + error.message);
+      return;
+    }
+
+    // Si la contraseña era temporal, se libera la cuenta
+    // solamente después de cambiarla correctamente.
+    if (mustChangePassword) {
+      const { error: rpcError } = await supabase.rpc(
+        "complete_password_change"
+      );
+
+      if (rpcError) {
+        setPasswordLoading(false);
+        setNotice(
+          "La contraseña cambió, pero no se pudo completar la autorización: " +
+          rpcError.message
+        );
+        return;
+      }
+    }
+
+    setNewPassword("");
+    setConfirmPassword("");
+    setRecoveryMode(false);
+    setPasswordLoading(false);
+
+    window.history.replaceState(
+      {},
+      document.title,
+      window.location.pathname
+    );
+
+    setNotice("Contraseña actualizada correctamente.");
+
+    await loadProfile();
+  }
+
+  // Cambio de correo: Supabase enviará la verificación
+  async function changeOwnEmail(e) {
+    e.preventDefault();
+
+    const email = newEmail.trim().toLowerCase();
+
+    if (!email || !email.includes("@")) {
+      setNotice("Introduce un correo electrónico válido.");
+      return;
+    }
+
+    setEmailLoading(true);
+
+    const { error } = await supabase.auth.updateUser({
+      email
+    });
+
+    setEmailLoading(false);
+
+    if (error) {
+      setNotice("No se pudo solicitar el cambio de correo: " + error.message);
+      return;
+    }
+
+    setNewEmail("");
+
+    setNotice(
+      "Solicitud enviada. Revisa el correo nuevo y completa la verificación de Supabase."
+    );
+  }
+
+  // Cargar foto desde el dispositivo
+  async function uploadProfilePhoto(e) {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setNotice("Selecciona un archivo de imagen válido.");
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_PHOTO_SIZE) {
+      setNotice("La fotografía no puede superar 3 MB.");
+      e.target.value = "";
+      return;
+    }
+
+    if (!session?.user?.id) {
+      setNotice("Debes iniciar sesión para cambiar tu foto.");
+      return;
+    }
+
+    setPhotoLoading(true);
+
+    const extension = (
+      file.name.split(".").pop() || "jpg"
+    ).toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    const filePath = `${session.user.id}/avatar.${extension}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(PHOTO_BUCKET)
+      .upload(filePath, file, {
+        upsert: true,
+        contentType: file.type,
+        cacheControl: "3600"
+      });
+
+    if (uploadError) {
+      setPhotoLoading(false);
+      setNotice(
+        "No se pudo cargar la foto. Comprueba la configuración del almacenamiento: " +
+        uploadError.message
+      );
+      e.target.value = "";
+      return;
+    }
+
+    const { data: publicData } = supabase.storage
+      .from(PHOTO_BUCKET)
+      .getPublicUrl(filePath);
+
+    const photoUrl =
+      `${publicData.publicUrl}?v=${Date.now()}`;
+
+    const { error: profileError } = await supabase.rpc(
+      "update_my_profile",
+      {
+        p_full_name: profileName.trim() || userName,
+        p_avatar_url: photoUrl
+      }
+    );
+
+    setPhotoLoading(false);
+    e.target.value = "";
+
+    if (profileError) {
+      setNotice(
+        "La foto se cargó, pero no se pudo guardar en el perfil: " +
+        profileError.message
+      );
+      return;
+    }
+
+    setProfile({
+      ...profile,
+      avatar_url: photoUrl,
+      full_name: profileName.trim() || userName
+    });
+
+    setNotice("Foto de perfil actualizada correctamente.");
+  }
+
+  // Guardar nombre y foto en el perfil
+  async function saveProfile() {
+    const name = profileName.trim();
+
+    if (!name) {
+      setNotice("El nombre no puede estar vacío.");
+      return;
+    }
+
+    setSavingProfile(true);
+
+    const { error } = await supabase.rpc(
+      "update_my_profile",
+      {
+        p_full_name: name,
+        p_avatar_url: profile?.avatar_url || ""
+      }
+    );
+
+    setSavingProfile(false);
+
+    if (error) {
+      setNotice("No se pudo guardar el perfil: " + error.message);
+      return;
+    }
+
+    setProfile({
+      ...profile,
+      full_name: name
+    });
+
+    setNotice("Perfil actualizado correctamente.");
+  }
+
   function num(value) {
-    return value === "" || value === null ? null : Number(value);
+    return value === "" || value === null
+      ? null
+      : Number(value);
   }
 
   async function save(e) {
@@ -852,7 +776,10 @@ export default function App() {
       return;
     }
 
-    if (form.rest_type !== "none" && !form.rest_person.trim()) {
+    if (
+      form.rest_type !== "none" &&
+      !form.rest_person.trim()
+    ) {
       setNotice("Informe o nome da pessoa.");
       return;
     }
@@ -899,7 +826,10 @@ export default function App() {
         .eq("id", editing);
 
       if (!isAdmin) {
-        updateQuery = updateQuery.eq("created_by", session.user.id);
+        updateQuery = updateQuery.eq(
+          "created_by",
+          session.user.id
+        );
       }
 
       result = await updateQuery.select().single();
@@ -934,7 +864,7 @@ export default function App() {
       setNotice(error.message);
     } else {
       setNotice("Status atualizado.");
-      loadUsers();
+      await loadUsers();
     }
   }
 
@@ -1008,7 +938,10 @@ export default function App() {
       .eq("id", r.id);
 
     if (!isAdmin) {
-      deleteQuery = deleteQuery.eq("created_by", session.user.id);
+      deleteQuery = deleteQuery.eq(
+        "created_by",
+        session.user.id
+      );
     }
 
     const { data, error } = await deleteQuery.select("id");
@@ -1149,7 +1082,8 @@ export default function App() {
 
   async function generateQR(r) {
     try {
-      const url = `${window.location.origin}/?report=${encodeURIComponent(r.id)}`;
+      const url =
+        `${window.location.origin}/?report=${encodeURIComponent(r.id)}`;
 
       const image = await QRCode.toDataURL(url, {
         width: 300,
@@ -1165,7 +1099,8 @@ export default function App() {
   }
 
   function shareWhatsApp(r) {
-    const url = `${window.location.origin}/?report=${encodeURIComponent(r.id)}`;
+    const url =
+      `${window.location.origin}/?report=${encodeURIComponent(r.id)}`;
 
     window.open(
       `https://wa.me/?text=${encodeURIComponent(
@@ -1285,7 +1220,6 @@ export default function App() {
       }
 
       header();
-
       drawSection("INFORMACIÓN OPERACIONAL");
 
       const metrics = [
@@ -1350,7 +1284,9 @@ export default function App() {
         );
       }
 
-      doc.save(`adecoagro-${r.report_date}-turno-${r.work_shift || "sin-turno"}.pdf`);
+      doc.save(
+        `adecoagro-${r.report_date}-turno-${r.work_shift || "sin-turno"}.pdf`
+      );
     } catch (error) {
       setNotice("No se pudo generar el PDF: " + error.message);
     }
@@ -1374,7 +1310,8 @@ export default function App() {
 
       const a = document.createElement("a");
       a.href = data;
-      a.download = `adecoagro-${r.report_date}-turno-${r.work_shift || "sin-turno"}.jpg`;
+      a.download =
+        `adecoagro-${r.report_date}-turno-${r.work_shift || "sin-turno"}.jpg`;
       a.click();
     } catch (error) {
       setNotice("No se pudo generar el JPG: " + error.message);
@@ -1407,19 +1344,85 @@ export default function App() {
     })[k];
   }
 
+  async function signOut() {
+    await supabase.auth.signOut();
+    setRecoveryMode(false);
+    setActiveSection("home");
+  }
+
   if (!configured) {
     return (
       <main className="center">
         <section className="panel">
           <h1>ADECOAGRO MINING CLOUD</h1>
           <p>
-            Faltan las credenciales del proyecto Supabase.
+            O código está pronto para configurar, mas ainda faltam as
+            credenciais do projeto Supabase.
           </p>
           <p>
-            Configura el archivo <code>.env</code> con la URL y la clave
-            publicable de Supabase. Nunca coloques la clave service_role
-            en el navegador.
+            Crie um arquivo <code>.env</code> com base em{" "}
+            <code>.env.example</code>, preenchendo a URL e a chave
+            publicável do Supabase. Nunca coloque a chave service_role
+            no navegador.
           </p>
+        </section>
+      </main>
+    );
+  }
+
+  // Pantalla de recuperación o establecimiento de contraseña
+  if (recoveryMode) {
+    return (
+      <main className="app-layout unauthenticated">
+        <header>
+          <div className="brand-area">
+            <img src={LOGO} alt="ADECO ENERGIA" className="adeco-logo" />
+            <div>
+              <div className="brand">
+                ADECOAGRO <span>MINING CLOUD</span>
+              </div>
+              <small>Energia em crescimento</small>
+            </div>
+          </div>
+        </header>
+
+        <section className="panel login">
+          <h2>Crear nueva contraseña</h2>
+          <p>
+            Introduce una contraseña nueva para tu cuenta.
+          </p>
+
+          <form onSubmit={updateOwnPassword}>
+            <label>
+              Nueva contraseña
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                minLength={8}
+                required
+              />
+            </label>
+
+            <label>
+              Confirmar contraseña
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                minLength={8}
+                required
+              />
+            </label>
+
+            <button type="submit" disabled={passwordLoading}>
+              {passwordLoading ? "Actualizando..." : "Guardar contraseña"}
+            </button>
+          </form>
+
+          {notice && <p>{notice}</p>}
         </section>
       </main>
     );
@@ -1460,159 +1463,74 @@ export default function App() {
 
       {!session ? (
         <section className="panel login">
-          {recoveryMode ? (
-            <>
-              <h1>Recuperar contraseña</h1>
-              <p>Introduce tu correo para recibir un enlace seguro.</p>
+          <h1>ADECOAGRO MINING CLOUD</h1>
+          <p>Plataforma de relatórios operacionais</p>
 
-              <form onSubmit={sendRecoveryEmail}>
-                <label>
-                  Correo electrónico
-                  <input
-                    type="email"
-                    value={recoveryEmail}
-                    onChange={e => setRecoveryEmail(e.target.value)}
-                    required
-                  />
-                </label>
+          <button onClick={signInGoogle} disabled={authLoading}>
+            {authLoading ? "Aguarde..." : t.login}
+          </button>
 
-                <button type="submit" disabled={authLoading}>
-                  {authLoading ? "Enviando..." : "Enviar enlace de recuperación"}
-                </button>
-              </form>
+          <div className="auth-divider">
+            <span>O</span>
+          </div>
 
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => setRecoveryMode(false)}
-              >
-                Volver al inicio de sesión
-              </button>
-            </>
-          ) : (
-            <>
-              <h1>ADECOAGRO MINING CLOUD</h1>
-              <p>Plataforma de informes operacionales</p>
-
-              <button
-                type="button"
-                onClick={signInGoogle}
-                disabled={authLoading}
-              >
-                {authLoading ? "Conectando..." : t.login}
-              </button>
-
-              <div style={{ margin: "22px 0", textAlign: "center" }}>
-                <span>— O entra con tu correo —</span>
-              </div>
-
-              <form onSubmit={signInPassword}>
-                <label>
-                  Correo electrónico
-                  <input
-                    type="email"
-                    autoComplete="email"
-                    value={authEmail}
-                    onChange={e => setAuthEmail(e.target.value)}
-                    required
-                  />
-                </label>
-
-                <label>
-                  Contraseña
-                  <input
-                    type="password"
-                    autoComplete="current-password"
-                    value={authPassword}
-                    onChange={e => setAuthPassword(e.target.value)}
-                    required
-                  />
-                </label>
-
-                <button type="submit" disabled={authLoading}>
-                  {authLoading ? "Ingresando..." : "Entrar con correo y contraseña"}
-                </button>
-              </form>
-
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => {
-                  setRecoveryEmail(authEmail);
-                  setRecoveryMode(true);
-                }}
-              >
-                ¿Olvidaste tu contraseña?
-              </button>
-
-              <p style={{ fontSize: "13px", marginTop: "18px" }}>
-                El registro inicial se realiza con Google. Después podrás
-                configurar una contraseña desde tu perfil.
-              </p>
-            </>
-          )}
-        </section>
-      ) : !profile ? (
-        <section className="panel">
-          <p>Cargando perfil...</p>
-        </section>
-      ) : recoveryMode || passwordSetupMode || mustChangePassword ? (
-        <section className="panel login">
-          <h2>
-            {recoveryMode
-              ? "Crear nueva contraseña"
-              : mustChangePassword
-                ? "Cambio obligatorio de contraseña"
-                : "Configura tu contraseña"}
-          </h2>
-
-          <p>
-            {mustChangePassword
-              ? "El administrador asignó una contraseña temporal. Debes crear una nueva para continuar."
-              : recoveryMode
-                ? "Establece una nueva contraseña para recuperar tu cuenta."
-                : "Ya puedes acceder con Google o con tu correo y esta contraseña."}
-          </p>
-
-          <form onSubmit={updateOwnPassword}>
+          <form onSubmit={signInEmail}>
             <label>
-              Nueva contraseña
+              Correo electrónico
               <input
-                type="password"
-                autoComplete="new-password"
-                minLength={8}
-                value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
+                type="email"
+                autoComplete="username"
+                value={authEmail}
+                onChange={e => setAuthEmail(e.target.value)}
+                placeholder="tu correo electrónico"
                 required
               />
             </label>
 
             <label>
-              Confirmar nueva contraseña
-              <input
-                type="password"
-                autoComplete="new-password"
-                minLength={8}
-                value={newPasswordConfirm}
-                onChange={e => setNewPasswordConfirm(e.target.value)}
-                required
-              />
+              Contraseña
+              <div className="password-input">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={authPassword}
+                  onChange={e => setAuthPassword(e.target.value)}
+                  placeholder="Tu contraseña"
+                  required
+                />
+
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? "Ocultar" : "Mostrar"}
+                </button>
+              </div>
             </label>
 
             <button type="submit" disabled={authLoading}>
-              {authLoading ? "Guardando..." : "Guardar nueva contraseña"}
+              {authLoading ? "Entrando..." : "Entrar con correo y contraseña"}
             </button>
           </form>
 
-          {mustChangePassword && (
-            <button
-              type="button"
-              className="secondary"
-              onClick={logout}
-            >
-              Salir
-            </button>
-          )}
+          <button
+            type="button"
+            className="secondary"
+            onClick={recoverPassword}
+            disabled={authLoading}
+          >
+            ¿Olvidaste tu contraseña?
+          </button>
+
+          <p className="auth-note">
+            El registro inicial de usuarios se realiza mediante Google.
+            Después de acceder, podrás establecer una contraseña desde Mi perfil.
+          </p>
+        </section>
+      ) : !profile ? (
+        <section className="panel">
+          <p>Carregando perfil...</p>
         </section>
       ) : profile.status !== "approved" && !isAdmin ? (
         <section className="panel">
@@ -1624,17 +1542,60 @@ export default function App() {
               ? "Entre em contato com o administrador."
               : t.waiting}
           </p>
-          <button className="secondary" onClick={logout}>
+
+          <button className="secondary" onClick={signOut}>
             {t.logout}
+          </button>
+        </section>
+      ) : mustChangePassword ? (
+        <section className="panel login">
+          <h2>Actualización obligatoria de contraseña</h2>
+          <p>
+            El administrador asignó una contraseña temporal a tu cuenta.
+            Para continuar, debes crear una contraseña personal nueva.
+          </p>
+
+          <form onSubmit={updateOwnPassword}>
+            <label>
+              Nueva contraseña
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                minLength={8}
+                required
+              />
+            </label>
+
+            <label>
+              Confirmar contraseña
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                minLength={8}
+                required
+              />
+            </label>
+
+            <button type="submit" disabled={passwordLoading}>
+              {passwordLoading ? "Actualizando..." : "Cambiar contraseña y continuar"}
+            </button>
+          </form>
+
+          <button className="secondary" onClick={signOut}>
+            Salir
           </button>
         </section>
       ) : (
         <>
           <aside className="sidebar">
             <div className="sidebar-user">
-              {avatarUrl ? (
+              {profilePhoto ? (
                 <img
-                  src={avatarUrl}
+                  src={profilePhoto}
                   alt="Foto de perfil"
                   className="user-avatar"
                 />
@@ -1677,10 +1638,7 @@ export default function App() {
                 👤 Mi perfil
               </button>
 
-              <button
-                className="menu-button"
-                onClick={logout}
-              >
+              <button className="menu-button" onClick={signOut}>
                 🚪 {t.logout}
               </button>
             </nav>
@@ -1939,7 +1897,7 @@ export default function App() {
               <h2>{t.admin}</h2>
 
               <p>
-                Administrador principal: {ADMIN}. Límite:
+                Administrador principal: {ADMIN}. Limite planejado:
                 1 administrador + 9 operadores.
               </p>
 
@@ -1949,7 +1907,9 @@ export default function App() {
                     <b>{u.full_name || u.email}</b>
                     <small>
                       {u.email} · {u.status} · {u.role}
-                      {u.must_change_password ? " · Cambio de contraseña pendiente" : ""}
+                      {u.must_change_password
+                        ? " · Cambio de contraseña pendiente"
+                        : ""}
                     </small>
                   </span>
 
@@ -1971,12 +1931,6 @@ export default function App() {
                   </span>
                 </div>
               ))}
-
-              <p style={{ fontSize: "13px", marginTop: "18px" }}>
-                La asignación de contraseñas temporales y el cambio
-                administrativo de correos se habilitarán después de
-                configurar la función segura del administrador en Supabase.
-              </p>
             </section>
           )}
 
@@ -1985,9 +1939,9 @@ export default function App() {
               <h2>Mi perfil</h2>
 
               <div className="profile-card">
-                {avatarUrl ? (
+                {profilePhoto ? (
                   <img
-                    src={avatarUrl}
+                    src={profilePhoto}
                     alt="Foto de perfil"
                     className="profile-photo"
                   />
@@ -1996,19 +1950,16 @@ export default function App() {
                 )}
 
                 <label>
-                  Foto de perfil
+                  Cambiar fotografía
                   <input
                     type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={e => {
-                      setSelectedPhoto(e.target.files?.[0] || null);
-                      uploadProfilePhoto(e);
-                    }}
-                    disabled={uploadingPhoto}
+                    accept="image/*"
+                    onChange={uploadProfilePhoto}
+                    disabled={photoLoading}
                   />
                 </label>
 
-                {uploadingPhoto && <p>Subiendo foto...</p>}
+                {photoLoading && <p>Subiendo fotografía...</p>}
 
                 <label>
                   Nombre del perfil
@@ -2030,63 +1981,54 @@ export default function App() {
                 </label>
 
                 <button
-                  type="button"
                   onClick={saveProfile}
                   disabled={savingProfile}
                 >
-                  {savingProfile ? "Guardando..." : "Guardar nombre"}
+                  {savingProfile ? "Guardando..." : "Guardar cambios"}
                 </button>
 
                 <hr />
 
                 <h3>Cambiar correo electrónico</h3>
                 <p>
-                  El nuevo correo debe verificarse mediante el enlace
-                  enviado por Supabase.
+                  Supabase enviará un enlace para verificar el nuevo correo.
                 </p>
 
-                <label>
-                  Nuevo correo electrónico
-                  <input
-                    type="email"
-                    value={newEmail}
-                    onChange={e => setNewEmail(e.target.value)}
-                    placeholder="nuevo@correo.com"
-                  />
-                </label>
-
-                <button
-                  type="button"
-                  onClick={requestEmailChange}
-                  disabled={changingEmail}
-                >
-                  {changingEmail ? "Enviando..." : "Solicitar cambio de correo"}
-                </button>
-
-                <hr />
-
-                <h3>Cambiar contraseña</h3>
-
-                <form onSubmit={changeOwnPassword}>
+                <form onSubmit={changeOwnEmail}>
                   <label>
-                    Contraseña actual
+                    Nuevo correo electrónico
                     <input
-                      type="password"
-                      autoComplete="current-password"
-                      value={currentPassword}
-                      onChange={e => setCurrentPassword(e.target.value)}
+                      type="email"
+                      value={newEmail}
+                      onChange={e => setNewEmail(e.target.value)}
+                      placeholder="nuevo@correo.com"
                       required
                     />
                   </label>
 
+                  <button type="submit" disabled={emailLoading}>
+                    {emailLoading ? "Enviando..." : "Solicitar cambio de correo"}
+                  </button>
+                </form>
+
+                <hr />
+
+                <h3>Contraseña</h3>
+                <p>
+                  Establece una contraseña para poder entrar con correo
+                  electrónico además de Google, o cambia tu contraseña actual.
+                </p>
+
+                <form onSubmit={updateOwnPassword}>
                   <label>
                     Nueva contraseña
                     <input
                       type="password"
                       autoComplete="new-password"
-                      minLength={8}
                       value={newPassword}
                       onChange={e => setNewPassword(e.target.value)}
+                      minLength={8}
+                      placeholder="Mínimo 8 caracteres"
                       required
                     />
                   </label>
@@ -2096,30 +2038,51 @@ export default function App() {
                     <input
                       type="password"
                       autoComplete="new-password"
+                      value={confirmPassword}
+                      onChange={e => setConfirmPassword(e.target.value)}
                       minLength={8}
-                      value={newPasswordConfirm}
-                      onChange={e => setNewPasswordConfirm(e.target.value)}
+                      placeholder="Repite la contraseña"
                       required
                     />
                   </label>
 
-                  <button type="submit" disabled={authLoading}>
-                    {authLoading ? "Actualizando..." : "Cambiar contraseña"}
+                  <button type="submit" disabled={passwordLoading}>
+                    {passwordLoading ? "Actualizando..." : "Actualizar contraseña"}
                   </button>
                 </form>
 
                 <hr />
 
+                <h3>Información de la cuenta</h3>
+
                 <label>
                   Último acceso
                   <input
                     type="text"
-                    readOnly
                     value={
-                      lastSignIn
-                        ? new Date(lastSignIn).toLocaleString()
+                      session?.user?.last_sign_in_at
+                        ? new Date(session.user.last_sign_in_at).toLocaleString()
                         : "No disponible"
                     }
+                    readOnly
+                  />
+                </label>
+
+                <label>
+                  Tipo de cuenta
+                  <input
+                    type="text"
+                    value={profile?.role || "operator"}
+                    readOnly
+                  />
+                </label>
+
+                <label>
+                  Estado de la cuenta
+                  <input
+                    type="text"
+                    value={profile?.status || ""}
+                    readOnly
                   />
                 </label>
               </div>
@@ -2139,10 +2102,7 @@ export default function App() {
               {" "}{qrReport.operators}
             </p>
 
-            <img
-              src={qrImage}
-              alt="Código QR del informe"
-            />
+            <img src={qrImage} alt="Código QR del informe" />
 
             <p>Escanea para abrir este informe.</p>
 
