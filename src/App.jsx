@@ -6,6 +6,8 @@ import QRCode from "qrcode";
 import { configured, supabase } from "./supabase";
 
 const ADMIN = "klarethsolarte@gmail.com";
+const LOGO = "/adeco-energia.jpg.jpg";
+const TOTAL_MINERS = 1280;
 
 const translations = {
   "pt-BR": {
@@ -34,7 +36,6 @@ const translations = {
     waiting: "Sua conta foi registrada e aguarda aprovação do administrador.",
     noReports: "Nenhum relatório encontrado."
   },
-
   "es-419": {
     login: "Entrar con Google",
     title: "Informe diario operacional",
@@ -61,7 +62,6 @@ const translations = {
     waiting: "Tu cuenta fue registrada y espera la aprobación del administrador.",
     noReports: "No hay informes."
   },
-
   "en-US": {
     login: "Sign in with Google",
     title: "Daily operational report",
@@ -90,7 +90,6 @@ const translations = {
   }
 };
 
-// Fecha local: evita el desfase UTC en Brasil.
 function getLocalDate() {
   const now = new Date();
 
@@ -137,6 +136,95 @@ const fields = [
   "supervisor_guidance"
 ];
 
+const reportStyles = {
+  container: {
+    background: "#ffffff",
+    color: "#182923",
+    border: "1px solid #cbd8ce",
+    borderRadius: "12px",
+    padding: "18px",
+    width: "100%",
+    fontFamily: "Arial, sans-serif",
+    boxSizing: "border-box"
+  },
+  header: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "16px",
+    borderBottom: "3px solid #1c6040",
+    paddingBottom: "14px",
+    marginBottom: "14px",
+    textAlign: "center",
+    flexWrap: "wrap"
+  },
+  logo: {
+    width: "95px",
+    height: "75px",
+    objectFit: "contain"
+  },
+  brand: {
+    color: "#164d35",
+    fontSize: "19px",
+    fontWeight: "bold",
+    margin: "0 0 5px"
+  },
+  subtitle: {
+    color: "#607268",
+    fontSize: "11px",
+    letterSpacing: "1px",
+    margin: 0
+  },
+  sectionTitle: {
+    background: "#164d35",
+    color: "#ffffff",
+    padding: "9px 12px",
+    borderRadius: "5px",
+    fontSize: "12px",
+    fontWeight: "bold",
+    margin: "16px 0 9px",
+    letterSpacing: "0.4px"
+  },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: "9px"
+  },
+  cell: {
+    border: "1px solid #b9cbbd",
+    borderRadius: "6px",
+    padding: "10px",
+    minWidth: 0,
+    background: "#fbfdfb",
+    boxSizing: "border-box"
+  },
+  cellLabel: {
+    display: "block",
+    color: "#26704b",
+    fontSize: "10px",
+    fontWeight: "bold",
+    textTransform: "uppercase",
+    marginBottom: "7px"
+  },
+  cellValue: {
+    display: "block",
+    color: "#182923",
+    fontSize: "14px",
+    fontWeight: "600",
+    overflowWrap: "anywhere",
+    whiteSpace: "pre-wrap",
+    minHeight: "18px"
+  },
+  footer: {
+    borderTop: "1px solid #cbd8ce",
+    marginTop: "16px",
+    paddingTop: "10px",
+    color: "#718078",
+    fontSize: "10px",
+    textAlign: "center"
+  }
+};
+
 export default function App() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -160,9 +248,12 @@ export default function App() {
 
   const t = translations[lang] || translations["pt-BR"];
 
+  // Disponibilidad automática sobre el total de 1280 equipos.
   const availability = form.miners_online === ""
-    ? ""
-    : ((Number(form.miners_online) / 1280) * 100).toFixed(2);
+    ? "0.00"
+    : (
+        (Number(form.miners_online) / TOTAL_MINERS) * 100
+      ).toFixed(2);
 
   const isAdmin =
     session?.user?.email?.toLowerCase() === ADMIN;
@@ -177,14 +268,18 @@ export default function App() {
   useEffect(() => {
     if (!configured) return;
 
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (error) {
+        setNotice(error.message);
+        return;
+      }
       setSession(data.session);
     });
 
     const {
       data: { subscription }
-    } = supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s);
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
     });
 
     return () => subscription.unsubscribe();
@@ -228,10 +323,10 @@ export default function App() {
     );
 
     if (data?.status === "approved" || isAdmin) {
-      loadReports();
+      await loadReports();
 
       if (isAdmin) {
-        loadUsers();
+        await loadUsers();
       }
     }
   }
@@ -300,7 +395,7 @@ export default function App() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: window.location.href
+        redirectTo: window.location.origin
       }
     });
 
@@ -315,10 +410,21 @@ export default function App() {
     const online = Number(form.miners_online || 0);
     const offline = Number(form.miners_offline || 0);
 
-    if (online + offline > 1280) {
+    if (online + offline > TOTAL_MINERS) {
       setNotice(
         "Error: las mineradoras operativas y offline no pueden superar las 1280 unidades."
       );
+      return;
+    }
+
+    if (online < 0 || offline < 0) {
+      setNotice("Los valores de mineradoras no pueden ser negativos.");
+      return;
+    }
+
+    if (Number(form.generators_online) < 0 ||
+        Number(form.generators_online) > 3) {
+      setNotice("El número de generadores debe estar entre 0 y 3.");
       return;
     }
 
@@ -375,12 +481,12 @@ export default function App() {
         report_date: getLocalDate()
       });
       setEditing(null);
-      loadReports();
+      await loadReports();
     }
   }
 
-  function num(v) {
-    return v === "" || v === null ? null : Number(v);
+  function num(value) {
+    return value === "" || value === null ? null : Number(value);
   }
 
   async function statusChange(id, status) {
@@ -443,9 +549,120 @@ export default function App() {
     });
   }
 
+  function restText(value) {
+    if (!value || value === "No") return "Sin descanso";
+
+    if (value.includes("|")) {
+      const parts = value.split("|");
+      return `${parts[0]} — ${parts.slice(1).join("|")}`;
+    }
+
+    return value;
+  }
+
+  function reportCell(label, value) {
+    return (
+      <div style={reportStyles.cell}>
+        <span style={reportStyles.cellLabel}>{label}</span>
+        <span style={reportStyles.cellValue}>
+          {value === null || value === undefined || value === ""
+            ? "-"
+            : String(value)}
+        </span>
+      </div>
+    );
+  }
+
+  function renderReport(r) {
+    const metrics = [
+      ["OPERADORES", r.operators],
+      ["DESCANSO", restText(r.day_off)],
+      ["HASHRATE (PH/s)", r.hashrate_ph],
+      ["DISPONIBILIDAD (%)", r.availability_pct],
+      ["MINERADORAS ONLINE", r.miners_online],
+      ["MINERADORAS OFFLINE", r.miners_offline],
+      ["CONSUMO (MW)", r.power_mw],
+      ["CONSUMO MENSUAL (kWh)", r.month_consumption_kwh],
+      ["GENERADORES EN OPERACIÓN", `${r.generators_running ?? "-"}/3`]
+    ];
+
+    const details = [
+      ["INCIDENCIAS", r.occurrences],
+      ["MANTENIMIENTOS REALIZADOS", r.maintenance],
+      ["PENDIENTES DEL PRÓXIMO TURNO", r.next_shift_pending],
+      ["ORIENTACIONES DE SUPERVISIÓN", r.supervisor_instructions]
+    ];
+
+    return (
+      <div
+        id={`report-${r.id}`}
+        key={r.id}
+        style={reportStyles.container}
+      >
+        <div style={reportStyles.header}>
+          <img
+            src={LOGO}
+            alt="ADECOAGRO"
+            style={reportStyles.logo}
+            crossOrigin="anonymous"
+          />
+
+          <div>
+            <h2 style={reportStyles.brand}>
+              ADECOAGRO MINING CLOUD
+            </h2>
+            <p style={reportStyles.subtitle}>
+              INFORME DIARIO OPERACIONAL
+            </p>
+            <p style={{
+              color: "#344d3e",
+              fontSize: "12px",
+              fontWeight: "bold",
+              margin: "8px 0 0"
+            }}>
+              FECHA: {r.report_date || "-"}
+            </p>
+          </div>
+        </div>
+
+        <div style={reportStyles.sectionTitle}>
+          INFORMACIÓN OPERACIONAL
+        </div>
+
+        <div style={reportStyles.grid}>
+          {metrics.map(([label, value]) => (
+            <React.Fragment key={label}>
+              {reportCell(label, value)}
+            </React.Fragment>
+          ))}
+        </div>
+
+        <div style={reportStyles.sectionTitle}>
+          DETALLES DEL TURNO
+        </div>
+
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "1fr",
+          gap: "9px"
+        }}>
+          {details.map(([label, value]) => (
+            <React.Fragment key={label}>
+              {reportCell(label, value)}
+            </React.Fragment>
+          ))}
+        </div>
+
+        <div style={reportStyles.footer}>
+          ADECOAGRO · ENERGIA EM CRESCIMENTO
+        </div>
+      </div>
+    );
+  }
+
   async function generateQR(r) {
     try {
-      const url = `${window.location.origin}/?report=${r.id}`;
+      const url = `${window.location.origin}/?report=${encodeURIComponent(r.id)}`;
 
       const image = await QRCode.toDataURL(url, {
         width: 300,
@@ -461,7 +678,7 @@ export default function App() {
   }
 
   function shareWhatsApp(r) {
-    const url = `${window.location.origin}/?report=${r.id}`;
+    const url = `${window.location.origin}/?report=${encodeURIComponent(r.id)}`;
 
     window.open(
       `https://wa.me/?text=${encodeURIComponent(
@@ -472,170 +689,207 @@ export default function App() {
   }
 
   async function exportPdf(r) {
-    const doc = new jsPDF();
+    try {
+      const doc = new jsPDF("p", "mm", "a4");
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 14;
+      const gap = 6;
+      const cardWidth = (pageWidth - margin * 2 - gap) / 2;
+      const fullWidth = pageWidth - margin * 2;
 
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
+      let y = 48;
 
-    const margin = 14;
-    const cardGap = 7;
-    const cardWidth = (pageWidth - margin * 2 - cardGap) / 2;
-    const fullWidth = pageWidth - margin * 2;
+      async function getLogo() {
+        return new Promise(resolve => {
+          const image = new Image();
+          image.crossOrigin = "anonymous";
 
-    let y = 48;
+          image.onload = () => {
+            try {
+              const canvas = document.createElement("canvas");
+              canvas.width = image.naturalWidth;
+              canvas.height = image.naturalHeight;
 
-    function header() {
-      doc.setFillColor(16, 42, 36);
-      doc.rect(0, 0, pageWidth, 37, "F");
+              const context = canvas.getContext("2d");
+              context.drawImage(image, 0, 0);
 
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(16);
-      doc.setFont("helvetica", "bold");
-      doc.text("ADECOAGRO MINING CLOUD", margin, 16);
+              resolve(canvas.toDataURL("image/png"));
+            } catch {
+              resolve(null);
+            }
+          };
 
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.text("RELATORIO DIARIO OPERACIONAL", margin, 25);
-
-      doc.setTextColor(35, 65, 49);
-      doc.setFontSize(11);
-      doc.text(`Fecha: ${r.report_date || "-"}`, margin, 44);
-    }
-
-    function newPage() {
-      doc.addPage();
-      header();
-      y = 53;
-    }
-
-    function drawCard(label, value, x, width) {
-      const text = String(value ?? "-").trim() || "-";
-      const lines = doc.splitTextToSize(text, width - 12);
-      const height = Math.max(20, 17 + lines.length * 5);
-
-      if (y + height > pageHeight - 16) {
-        newPage();
+          image.onerror = () => resolve(null);
+          image.src = LOGO;
+        });
       }
 
-      doc.setFillColor(246, 249, 246);
-      doc.setDrawColor(215, 228, 218);
-      doc.roundedRect(x, y, width, height, 3, 3, "FD");
+      const logoData = await getLogo();
 
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.setTextColor(25, 91, 60);
-      doc.text(label, x + 6, y + 8);
+      function header() {
+        doc.setFillColor(22, 77, 53);
+        doc.rect(0, 0, pageWidth, 36, "F");
 
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.setTextColor(35, 48, 40);
-      doc.text(lines, x + 6, y + 15);
+        if (logoData) {
+          doc.addImage(logoData, "PNG", margin, 5, 25, 25);
+        }
 
-      return height;
-    }
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(15);
+        doc.text("ADECOAGRO MINING CLOUD", logoData ? 44 : margin, 15);
 
-    header();
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.text("INFORME DIARIO OPERACIONAL", logoData ? 44 : margin, 23);
 
-    const rest = r.day_off === "No"
-      ? "Sin descanso"
-      : r.day_off?.includes("|")
-        ? `${r.day_off.split("|")[0]} — ${r.day_off.split("|").slice(1).join("|")}`
-        : r.day_off || "-";
+        doc.setTextColor(35, 65, 49);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.text(`FECHA: ${r.report_date || "-"}`, margin, 44);
+      }
 
-    const metrics = [
-      ["Operadores", r.operators],
-      ["Descanso", rest],
-      ["Hashrate (PH/s)", r.hashrate_ph],
-      ["Disponibilidad (%)", r.availability_pct],
-      ["Mineradoras online", r.miners_online],
-      ["Mineradoras offline", r.miners_offline],
-      ["Consumo (MW)", r.power_mw],
-      ["Consumo mensual (kWh)", r.month_consumption_kwh],
-      ["Generadores en operación", `${r.generators_running ?? "-"}/3`]
-    ];
+      function newPage() {
+        doc.addPage();
+        header();
+        y = 51;
+      }
 
-    for (let i = 0; i < metrics.length; i += 2) {
-      const leftHeight = drawCard(
-        metrics[i][0],
-        metrics[i][1],
-        margin,
-        cardWidth
-      );
+      function drawSection(title) {
+        if (y + 11 > pageHeight - 15) newPage();
 
-      let rightHeight = 0;
+        doc.setFillColor(22, 77, 53);
+        doc.roundedRect(margin, y, fullWidth, 8, 1.5, 1.5, "F");
 
-      if (metrics[i + 1]) {
-        rightHeight = drawCard(
-          metrics[i + 1][0],
-          metrics[i + 1][1],
-          margin + cardWidth + cardGap,
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.text(title, margin + 4, y + 5.5);
+
+        y += 12;
+      }
+
+      function drawCard(label, value, x, width) {
+        const text = String(value ?? "-").trim() || "-";
+        const lines = doc.splitTextToSize(text, width - 8);
+        const height = Math.max(19, 13 + lines.length * 4.5);
+
+        if (y + height > pageHeight - 15) {
+          newPage();
+        }
+
+        doc.setFillColor(251, 253, 251);
+        doc.setDrawColor(185, 203, 189);
+        doc.roundedRect(x, y, width, height, 2, 2, "FD");
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7.5);
+        doc.setTextColor(38, 112, 75);
+        doc.text(label, x + 4, y + 6);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(24, 41, 35);
+        doc.text(lines, x + 4, y + 12);
+
+        return height;
+      }
+
+      header();
+
+      drawSection("INFORMACIÓN OPERACIONAL");
+
+      const metrics = [
+        ["OPERADORES", r.operators],
+        ["DESCANSO", restText(r.day_off)],
+        ["HASHRATE (PH/s)", r.hashrate_ph],
+        ["DISPONIBILIDAD (%)", r.availability_pct],
+        ["MINERADORAS ONLINE", r.miners_online],
+        ["MINERADORAS OFFLINE", r.miners_offline],
+        ["CONSUMO (MW)", r.power_mw],
+        ["CONSUMO MENSUAL (kWh)", r.month_consumption_kwh],
+        ["GENERADORES EN OPERACIÓN", `${r.generators_running ?? "-"}/3`]
+      ];
+
+      for (let i = 0; i < metrics.length; i += 2) {
+        const leftHeight = drawCard(
+          metrics[i][0],
+          metrics[i][1],
+          margin,
           cardWidth
+        );
+
+        const rightHeight = metrics[i + 1]
+          ? drawCard(
+              metrics[i + 1][0],
+              metrics[i + 1][1],
+              margin + cardWidth + gap,
+              cardWidth
+            )
+          : 0;
+
+        y += Math.max(leftHeight, rightHeight) + 5;
+      }
+
+      drawSection("DETALLES DEL TURNO");
+
+      const details = [
+        ["INCIDENCIAS", r.occurrences],
+        ["MANTENIMIENTOS REALIZADOS", r.maintenance],
+        ["PENDIENTES DEL PRÓXIMO TURNO", r.next_shift_pending],
+        ["ORIENTACIONES DE SUPERVISIÓN", r.supervisor_instructions]
+      ];
+
+      details.forEach(([label, value]) => {
+        const height = drawCard(label, value, margin, fullWidth);
+        y += height + 5;
+      });
+
+      const pages = doc.internal.getNumberOfPages();
+
+      for (let page = 1; page <= pages; page++) {
+        doc.setPage(page);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(110, 125, 115);
+        doc.text(
+          `ADECOAGRO · Energia em crescimento · ${page}/${pages}`,
+          pageWidth / 2,
+          pageHeight - 7,
+          { align: "center" }
         );
       }
 
-      y += Math.max(leftHeight, rightHeight) + 5;
+      doc.save(`adecoagro-${r.report_date}.pdf`);
+    } catch (error) {
+      setNotice("No se pudo generar el PDF: " + error.message);
     }
-
-    const details = [
-      ["OCORRÊNCIAS", r.occurrences],
-      ["MANUTENÇÕES REALIZADAS", r.maintenance],
-      ["PENDÊNCIAS DO PRÓXIMO TURNO", r.next_shift_pending],
-      ["ORIENTAÇÕES DA SUPERVISÃO", r.supervisor_instructions]
-    ];
-
-    details.forEach(([label, value]) => {
-      const text = String(value ?? "-").trim() || "-";
-      const lines = doc.splitTextToSize(text, fullWidth - 12);
-      const height = Math.max(23, 18 + lines.length * 5);
-
-      if (y + height > pageHeight - 16) {
-        newPage();
-      }
-
-      doc.setFillColor(246, 249, 246);
-      doc.setDrawColor(215, 228, 218);
-      doc.roundedRect(margin, y, fullWidth, height, 3, 3, "FD");
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.setTextColor(25, 91, 60);
-      doc.text(label, margin + 6, y + 8);
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.setTextColor(35, 48, 40);
-      doc.text(lines, margin + 6, y + 16);
-
-      y += height + 6;
-    });
-
-    doc.setFontSize(8);
-    doc.setTextColor(110, 125, 115);
-
-    doc.text(
-      "ADECOAGRO - Energia em crescimento",
-      pageWidth / 2,
-      pageHeight - 7,
-      { align: "center" }
-    );
-
-    doc.save(`adecoagro-${r.report_date}.pdf`);
   }
 
   async function exportJpg(r) {
-    const node = document.getElementById(`report-${r.id}`);
+    try {
+      const node = document.getElementById(`report-${r.id}`);
 
-    if (!node) return;
+      if (!node) {
+        setNotice("No se encontró el informe para exportar.");
+        return;
+      }
 
-    const data = await toJpeg(node, {
-      quality: 0.92,
-      backgroundColor: "#ffffff"
-    });
+      const data = await toJpeg(node, {
+        quality: 0.95,
+        backgroundColor: "#ffffff",
+        pixelRatio: 2,
+        cacheBust: true
+      });
 
-    const a = document.createElement("a");
-    a.href = data;
-    a.download = `adecoagro-${r.report_date}.jpg`;
-    a.click();
+      const a = document.createElement("a");
+      a.href = data;
+      a.download = `adecoagro-${r.report_date}.jpg`;
+      a.click();
+    } catch (error) {
+      setNotice("No se pudo generar el JPG: " + error.message);
+    }
   }
 
   function label(k) {
@@ -684,12 +938,11 @@ export default function App() {
   }
 
   return (
-   <main className={`app-layout ${session ? "authenticated" : "unauthenticated"}`}>
-
+    <main className={`app-layout ${session ? "authenticated" : "unauthenticated"}`}>
       <header>
         <div className="brand-area">
           <img
-            src="/adeco-energia.jpg.jpg"
+            src={LOGO}
             alt="ADECO ENERGIA"
             className="adeco-logo"
           />
@@ -749,22 +1002,14 @@ export default function App() {
 
             <nav className="sidebar-menu">
               <button
-                className={
-                  activeSection === "home"
-                    ? "menu-active"
-                    : "menu-button"
-                }
+                className={activeSection === "home" ? "menu-active" : "menu-button"}
                 onClick={() => setActiveSection("home")}
               >
                 🏠 Inicio
               </button>
 
               <button
-                className={
-                  activeSection === "history"
-                    ? "menu-active"
-                    : "menu-button"
-                }
+                className={activeSection === "history" ? "menu-active" : "menu-button"}
                 onClick={() => setActiveSection("history")}
               >
                 📁 Histórico general
@@ -772,11 +1017,7 @@ export default function App() {
 
               {isAdmin && (
                 <button
-                  className={
-                    activeSection === "users"
-                      ? "menu-active"
-                      : "menu-button"
-                  }
+                  className={activeSection === "users" ? "menu-active" : "menu-button"}
                   onClick={() => setActiveSection("users")}
                 >
                   👥 Administración de usuarios
@@ -784,11 +1025,7 @@ export default function App() {
               )}
 
               <button
-                className={
-                  activeSection === "profile"
-                    ? "menu-active"
-                    : "menu-button"
-                }
+                className={activeSection === "profile" ? "menu-active" : "menu-button"}
                 onClick={() => setActiveSection("profile")}
               >
                 👤 Mi perfil
@@ -812,28 +1049,22 @@ export default function App() {
                   {fields.map(k => (
                     <label
                       key={k}
-                      className={
-                        [
-                          "incidents",
-                          "maintenance",
-                          "next_shift_pending",
-                          "supervisor_guidance"
-                        ].includes(k)
-                          ? "wide"
-                          : ""
-                      }
+                      className={[
+                        "incidents",
+                        "maintenance",
+                        "next_shift_pending",
+                        "supervisor_guidance"
+                      ].includes(k) ? "wide" : ""}
                     >
                       {label(k)}
 
                       {k === "rest_type" ? (
                         <select
                           value={form.rest_type}
-                          onChange={e =>
-                            setForm({
-                              ...form,
-                              rest_type: e.target.value
-                            })
-                          }
+                          onChange={e => setForm({
+                            ...form,
+                            rest_type: e.target.value
+                          })}
                         >
                           <option value="none">
                             {lang === "pt-BR"
@@ -842,33 +1073,15 @@ export default function App() {
                                 ? "Sin descanso"
                                 : "No absence"}
                           </option>
-
                           <option value="folga">
-                            {lang === "pt-BR"
-                              ? "Folga"
-                              : lang === "es-419"
-                                ? "Descanso"
-                                : "Day off"}
+                            {lang === "pt-BR" ? "Folga" : lang === "es-419" ? "Descanso" : "Day off"}
                           </option>
-
                           <option value="atestado">
-                            {lang === "pt-BR"
-                              ? "Atestado"
-                              : lang === "es-419"
-                                ? "Certificado médico"
-                                : "Medical leave"}
+                            {lang === "pt-BR" ? "Atestado" : lang === "es-419" ? "Certificado médico" : "Medical leave"}
                           </option>
-
-                          <option value="banco de horas">
-                            Banco de horas
-                          </option>
-
+                          <option value="banco de horas">Banco de horas</option>
                           <option value="falta">
-                            {lang === "pt-BR"
-                              ? "Falta"
-                              : lang === "es-419"
-                                ? "Ausencia"
-                                : "Absence"}
+                            {lang === "pt-BR" ? "Falta" : lang === "es-419" ? "Ausencia" : "Absence"}
                           </option>
                         </select>
                       ) : k === "rest_person" ? (
@@ -877,12 +1090,10 @@ export default function App() {
                           lang={lang}
                           spellCheck={true}
                           value={form.rest_person}
-                          onChange={e =>
-                            setForm({
-                              ...form,
-                              rest_person: e.target.value
-                            })
-                          }
+                          onChange={e => setForm({
+                            ...form,
+                            rest_person: e.target.value
+                          })}
                           placeholder={
                             lang === "pt-BR"
                               ? "Nome da pessoa"
@@ -903,29 +1114,25 @@ export default function App() {
                           lang={lang}
                           spellCheck={true}
                           value={form[k]}
-                          onChange={e =>
-                            setForm({
-                              ...form,
-                              [k]: e.target.value
-                            })
-                          }
+                          onChange={e => setForm({
+                            ...form,
+                            [k]: e.target.value
+                          })}
                         />
                       ) : k === "availability" ? (
                         <input
                           type="number"
                           value={availability}
                           readOnly
-                          placeholder="Calculado automáticamente"
+                          placeholder="0.00"
                         />
                       ) : k === "generators_online" ? (
                         <select
                           value={form.generators_online}
-                          onChange={e =>
-                            setForm({
-                              ...form,
-                              generators_online: e.target.value
-                            })
-                          }
+                          onChange={e => setForm({
+                            ...form,
+                            generators_online: e.target.value
+                          })}
                           required
                         >
                           <option value="">Seleccionar</option>
@@ -954,7 +1161,7 @@ export default function App() {
                           }
                           max={
                             ["miners_online", "miners_offline"].includes(k)
-                              ? 1280
+                              ? TOTAL_MINERS
                               : undefined
                           }
                           step={
@@ -963,12 +1170,10 @@ export default function App() {
                               : "any"
                           }
                           value={form[k]}
-                          onChange={e =>
-                            setForm({
-                              ...form,
-                              [k]: e.target.value
-                            })
-                          }
+                          onChange={e => setForm({
+                            ...form,
+                            [k]: e.target.value
+                          })}
                         />
                       )}
                     </label>
@@ -989,7 +1194,7 @@ export default function App() {
                       });
                     }}
                   >
-                    Cancelar edição
+                    Cancelar edición
                   </button>
                 )}
               </form>
@@ -998,23 +1203,19 @@ export default function App() {
 
           {activeSection === "history" && (
             <section className="panel">
-              <h2>Histórico general</h2>
+              <h2>{t.history}</h2>
 
               {reports.length === 0 ? (
                 <p>{t.noReports}</p>
               ) : (
                 reports.map(r => (
-                  <article
-                    className="report"
-                    id={`report-${r.id}`}
-                    key={r.id}
-                  >
+                  <article className="report" key={r.id}>
                     <div className="reporthead">
                       <h3>
                         {r.report_date} · {r.operators}
                       </h3>
 
-                      <div>
+                      <div className="report-actions">
                         <button
                           className="secondary"
                           onClick={() => exportPdf(r)}
@@ -1054,41 +1255,7 @@ export default function App() {
                       </div>
                     </div>
 
-                    <p>
-                      <b>Hashrate:</b> {r.hashrate_ph ?? "-"} PH/s ·{" "}
-                      <b>Disponibilidade:</b> {r.availability_pct ?? "-"}%
-                    </p>
-
-                    <p>
-                      <b>Mineradoras:</b> {r.miners_online ?? "-"} online /{" "}
-                      {r.miners_offline ?? "-"} offline ·{" "}
-                      <b>Geradores:</b> {r.generators_running ?? "-"}/3
-                    </p>
-
-                    <p>
-                      <b>Consumo:</b> {r.power_mw ?? "-"} MW ·{" "}
-                      <b>Mês:</b> {r.month_consumption_kwh ?? "-"} kWh
-                    </p>
-
-                    <p>
-                      <b>Descanso:</b>{" "}
-                      {r.day_off === "No"
-                        ? "Sin descanso"
-                        : r.day_off?.includes("|")
-                          ? `${r.day_off.split("|")[0]} — ${r.day_off.split("|").slice(1).join("|")}`
-                          : r.day_off || "-"}
-                    </p>
-
-                    {[
-                      ["Ocorrências", r.occurrences],
-                      ["Manutenções", r.maintenance],
-                      ["Pendências", r.next_shift_pending],
-                      ["Orientações", r.supervisor_instructions]
-                    ].map(([a, b]) => (
-                      <p key={a}>
-                        <b>{a}:</b> {b || "-"}
-                      </p>
-                    ))}
+                    {renderReport(r)}
                   </article>
                 ))
               )}
@@ -1116,10 +1283,8 @@ export default function App() {
                   <span>
                     {u.role !== "admin" && (
                       <>
-                        <button
-                          onClick={() => statusChange(u.id, "approved")}
-                        >
-                          Aprovar
+                        <button onClick={() => statusChange(u.id, "approved")}>
+                          Aprobar
                         </button>
 
                         <button
@@ -1152,9 +1317,7 @@ export default function App() {
                     className="profile-photo"
                   />
                 ) : (
-                  <div className="profile-photo-placeholder">
-                    👤
-                  </div>
+                  <div className="profile-photo-placeholder">👤</div>
                 )}
 
                 <label>
@@ -1180,9 +1343,7 @@ export default function App() {
                   onClick={saveProfile}
                   disabled={savingProfile}
                 >
-                  {savingProfile
-                    ? "Guardando..."
-                    : "Guardar cambios"}
+                  {savingProfile ? "Guardando..." : "Guardar cambios"}
                 </button>
               </div>
             </section>
@@ -1238,6 +1399,3 @@ export default function App() {
     </main>
   );
 }
-
-}
-```
