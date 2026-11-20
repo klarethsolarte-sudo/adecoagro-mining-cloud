@@ -13,7 +13,8 @@ const translations = {
   "pt-BR": {
     login: "Entrar com Google",
     title: "Relatório diário operacional",
-    date: "Data",
+    date: "Data operacional",
+    shift: "Turno de trabalho",
     operator: "Operador(es)",
     rest: "Folga / Descanso",
     hash: "Hashrate (PH/s)",
@@ -39,7 +40,8 @@ const translations = {
   "es-419": {
     login: "Entrar con Google",
     title: "Informe diario operacional",
-    date: "Fecha",
+    date: "Fecha operacional",
+    shift: "Turno de trabajo",
     operator: "Operador(es)",
     rest: "Descanso",
     hash: "Hashrate (PH/s)",
@@ -65,7 +67,8 @@ const translations = {
   "en-US": {
     login: "Sign in with Google",
     title: "Daily operational report",
-    date: "Date",
+    date: "Operational date",
+    shift: "Work shift",
     operator: "Operator(s)",
     rest: "Off duty / Rest",
     hash: "Hashrate (PH/s)",
@@ -90,36 +93,73 @@ const translations = {
   }
 };
 
-function getLocalDate() {
-  const now = new Date();
-
+// Fecha local en formato YYYY-MM-DD.
+function getLocalDate(date = new Date()) {
   return [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, "0"),
-    String(now.getDate()).padStart(2, "0")
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0")
   ].join("-");
 }
 
-const blank = {
-  report_date: getLocalDate(),
-  operator_names: "",
-  rest_type: "none",
-  rest_person: "",
-  hashrate: "",
-  miners_online: "",
-  miners_offline: "",
-  availability: "",
-  power_mw: "",
-  monthly_kwh: "",
-  generators_online: "",
-  incidents: "",
-  maintenance: "",
-  next_shift_pending: "",
-  supervisor_guidance: ""
-};
+// Calcula el turno y la fecha operacional automáticamente.
+function getOperationalInfo(date = new Date()) {
+  const minutes = date.getHours() * 60 + date.getMinutes();
+
+  let work_shift;
+  let operationalDate = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate()
+  );
+
+  if (minutes >= 420 && minutes < 920) {
+    // 07:00 hasta 15:19
+    work_shift = "A";
+  } else if (minutes >= 920 && minutes < 1400) {
+    // 15:20 hasta 23:19
+    work_shift = "B";
+  } else {
+    // 23:20 hasta 06:59
+    work_shift = "C";
+
+    if (minutes < 420) {
+      // El turno C antes de las 07:00 pertenece al día anterior.
+      operationalDate.setDate(operationalDate.getDate() - 1);
+    }
+  }
+
+  return {
+    report_date: getLocalDate(operationalDate),
+    work_shift
+  };
+}
+
+function createBlankForm() {
+  return {
+    ...getOperationalInfo(),
+    operator_names: "",
+    rest_type: "none",
+    rest_person: "",
+    hashrate: "",
+    miners_online: "",
+    miners_offline: "",
+    availability: "",
+    power_mw: "",
+    monthly_kwh: "",
+    generators_online: "",
+    incidents: "",
+    maintenance: "",
+    next_shift_pending: "",
+    supervisor_guidance: ""
+  };
+}
+
+const blank = createBlankForm();
 
 const fields = [
   "report_date",
+  "work_shift",
   "operator_names",
   "rest_type",
   "rest_person",
@@ -233,7 +273,7 @@ export default function App() {
     localStorage.getItem("amc-lang") || "pt-BR"
   );
 
-  const [form, setForm] = useState(blank);
+  const [form, setForm] = useState(createBlankForm);
   const [reports, setReports] = useState([]);
   const [users, setUsers] = useState([]);
   const [editing, setEditing] = useState(null);
@@ -248,7 +288,6 @@ export default function App() {
 
   const t = translations[lang] || translations["pt-BR"];
 
-  // Disponibilidad automática sobre el total de 1280 equipos.
   const availability = form.miners_online === ""
     ? "0.00"
     : (
@@ -410,6 +449,16 @@ export default function App() {
     const online = Number(form.miners_online || 0);
     const offline = Number(form.miners_offline || 0);
 
+    if (!form.work_shift) {
+      setNotice("Seleccione el turno de trabajo.");
+      return;
+    }
+
+    if (!form.report_date) {
+      setNotice("Seleccione la fecha operacional.");
+      return;
+    }
+
     if (online + offline > TOTAL_MINERS) {
       setNotice(
         "Error: las mineradoras operativas y offline no pueden superar las 1280 unidades."
@@ -435,6 +484,7 @@ export default function App() {
 
     const payload = {
       report_date: form.report_date,
+      work_shift: form.work_shift,
       created_by: session.user.id,
       operators: form.operator_names,
       day_off: form.rest_type === "none"
@@ -476,10 +526,7 @@ export default function App() {
       setNotice(result.error.message);
     } else {
       setNotice("Relatório salvo.");
-      setForm({
-        ...blank,
-        report_date: getLocalDate()
-      });
+      setForm(createBlankForm());
       setEditing(null);
       await loadReports();
     }
@@ -514,6 +561,7 @@ export default function App() {
 
     setForm({
       report_date: r.report_date,
+      work_shift: r.work_shift || "",
       operator_names: r.operators || "",
 
       rest_type: dayOff.includes("|")
@@ -575,6 +623,7 @@ export default function App() {
 
   function renderReport(r) {
     const metrics = [
+      ["TURNO DE TRABAJO", r.work_shift ? `TURNO ${r.work_shift}` : "-"],
       ["OPERADORES", r.operators],
       ["DESCANSO", restText(r.day_off)],
       ["HASHRATE (PH/s)", r.hashrate_ph],
@@ -748,6 +797,7 @@ export default function App() {
         doc.setFontSize(10);
         doc.setFont("helvetica", "bold");
         doc.text(`FECHA: ${r.report_date || "-"}`, margin, 44);
+        doc.text(`TURNO: ${r.work_shift || "-"}`, margin + 75, 44);
       }
 
       function newPage() {
@@ -801,6 +851,7 @@ export default function App() {
       drawSection("INFORMACIÓN OPERACIONAL");
 
       const metrics = [
+        ["TURNO DE TRABAJO", r.work_shift ? `TURNO ${r.work_shift}` : "-"],
         ["OPERADORES", r.operators],
         ["DESCANSO", restText(r.day_off)],
         ["HASHRATE (PH/s)", r.hashrate_ph],
@@ -861,7 +912,7 @@ export default function App() {
         );
       }
 
-      doc.save(`adecoagro-${r.report_date}.pdf`);
+      doc.save(`adecoagro-${r.report_date}-turno-${r.work_shift || "sin-turno"}.pdf`);
     } catch (error) {
       setNotice("No se pudo generar el PDF: " + error.message);
     }
@@ -885,7 +936,7 @@ export default function App() {
 
       const a = document.createElement("a");
       a.href = data;
-      a.download = `adecoagro-${r.report_date}.jpg`;
+      a.download = `adecoagro-${r.report_date}-turno-${r.work_shift || "sin-turno"}.jpg`;
       a.click();
     } catch (error) {
       setNotice("No se pudo generar el JPG: " + error.message);
@@ -895,6 +946,7 @@ export default function App() {
   function label(k) {
     return ({
       report_date: t.date,
+      work_shift: t.shift,
       operator_names: t.operator,
       rest_type: t.rest,
       rest_person:
@@ -1058,7 +1110,21 @@ export default function App() {
                     >
                       {label(k)}
 
-                      {k === "rest_type" ? (
+                      {k === "work_shift" ? (
+                        <select
+                          value={form.work_shift}
+                          onChange={e => setForm({
+                            ...form,
+                            work_shift: e.target.value
+                          })}
+                          required
+                        >
+                          <option value="">Seleccionar turno</option>
+                          <option value="A">Turno A — 07:00 a 15:20</option>
+                          <option value="B">Turno B — 15:20 a 23:20</option>
+                          <option value="C">Turno C — 23:20 a 07:00</option>
+                        </select>
+                      ) : k === "rest_type" ? (
                         <select
                           value={form.rest_type}
                           onChange={e => setForm({
@@ -1188,10 +1254,7 @@ export default function App() {
                     className="secondary"
                     onClick={() => {
                       setEditing(null);
-                      setForm({
-                        ...blank,
-                        report_date: getLocalDate()
-                      });
+                      setForm(createBlankForm());
                     }}
                   >
                     Cancelar edición
@@ -1212,7 +1275,8 @@ export default function App() {
                   <article className="report" key={r.id}>
                     <div className="reporthead">
                       <h3>
-                        {r.report_date} · {r.operators}
+                        {r.report_date} · {r.work_shift ? `Turno ${r.work_shift} · ` : ""}
+                        {r.operators}
                       </h3>
 
                       <div className="report-actions">
@@ -1357,7 +1421,9 @@ export default function App() {
             <h2>Compartir informe</h2>
 
             <p>
-              {qrReport.report_date} · {qrReport.operators}
+              {qrReport.report_date} ·
+              {qrReport.work_shift ? ` Turno ${qrReport.work_shift} ·` : ""}
+              {" "}{qrReport.operators}
             </p>
 
             <img
