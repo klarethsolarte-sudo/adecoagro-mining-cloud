@@ -93,7 +93,6 @@ const translations = {
   }
 };
 
-// Fecha local en formato YYYY-MM-DD.
 function getLocalDate(date = new Date()) {
   return [
     date.getFullYear(),
@@ -102,7 +101,6 @@ function getLocalDate(date = new Date()) {
   ].join("-");
 }
 
-// Calcula el turno y la fecha operacional automáticamente.
 function getOperationalInfo(date = new Date()) {
   const minutes = date.getHours() * 60 + date.getMinutes();
 
@@ -114,17 +112,13 @@ function getOperationalInfo(date = new Date()) {
   );
 
   if (minutes >= 420 && minutes < 920) {
-    // 07:00 hasta 15:19
     work_shift = "A";
   } else if (minutes >= 920 && minutes < 1400) {
-    // 15:20 hasta 23:19
     work_shift = "B";
   } else {
-    // 23:20 hasta 06:59
     work_shift = "C";
 
     if (minutes < 420) {
-      // El turno C antes de las 07:00 pertenece al día anterior.
       operationalDate.setDate(operationalDate.getDate() - 1);
     }
   }
@@ -154,8 +148,6 @@ function createBlankForm() {
     supervisor_guidance: ""
   };
 }
-
-const blank = createBlankForm();
 
 const fields = [
   "report_date",
@@ -443,6 +435,10 @@ export default function App() {
     }
   }
 
+  function num(value) {
+    return value === "" || value === null ? null : Number(value);
+  }
+
   async function save(e) {
     e.preventDefault();
 
@@ -471,8 +467,10 @@ export default function App() {
       return;
     }
 
-    if (Number(form.generators_online) < 0 ||
-        Number(form.generators_online) > 3) {
+    if (
+      Number(form.generators_online) < 0 ||
+      Number(form.generators_online) > 3
+    ) {
       setNotice("El número de generadores debe estar entre 0 y 3.");
       return;
     }
@@ -506,12 +504,33 @@ export default function App() {
     let result;
 
     if (editing) {
+      // Verificar que el informe existe y pertenece al usuario,
+      // salvo cuando quien edita es el administrador.
+      const reportToEdit = reports.find(r => r.id === editing);
+
+      if (
+        !reportToEdit ||
+        (!isAdmin && reportToEdit.created_by !== session.user.id)
+      ) {
+        setNotice("No tienes autorización para modificar este informe.");
+        return;
+      }
+
       const { created_by, ...updatePayload } = payload;
 
-      result = await supabase
+      let updateQuery = supabase
         .from("daily_reports")
         .update(updatePayload)
-        .eq("id", editing)
+        .eq("id", editing);
+
+      if (!isAdmin) {
+        updateQuery = updateQuery.eq(
+          "created_by",
+          session.user.id
+        );
+      }
+
+      result = await updateQuery
         .select()
         .single();
     } else {
@@ -532,10 +551,6 @@ export default function App() {
     }
   }
 
-  function num(value) {
-    return value === "" || value === null ? null : Number(value);
-  }
-
   async function statusChange(id, status) {
     const { error } = await supabase.rpc(
       "set_operator_status",
@@ -554,6 +569,14 @@ export default function App() {
   }
 
   function edit(r) {
+    const canEdit =
+      isAdmin || r.created_by === session.user.id;
+
+    if (!canEdit) {
+      setNotice("No tienes autorización para modificar este informe.");
+      return;
+    }
+
     setEditing(r.id);
 
     const dayOff = r.day_off || "";
@@ -595,6 +618,57 @@ export default function App() {
       top: 0,
       behavior: "smooth"
     });
+  }
+
+  async function deleteReport(r) {
+    const canDelete =
+      isAdmin || r.created_by === session.user.id;
+
+    if (!canDelete) {
+      setNotice("No tienes autorización para eliminar este informe.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `¿Deseas eliminar el informe del ${r.report_date}, turno ${r.work_shift || "-"}? Esta acción no se puede deshacer.`
+    );
+
+    if (!confirmed) return;
+
+    let deleteQuery = supabase
+      .from("daily_reports")
+      .delete()
+      .eq("id", r.id);
+
+    if (!isAdmin) {
+      deleteQuery = deleteQuery.eq(
+        "created_by",
+        session.user.id
+      );
+    }
+
+    const { data, error } = await deleteQuery.select("id");
+
+    if (error) {
+      setNotice("No se pudo eliminar el informe: " + error.message);
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      setNotice(
+        "No se eliminó el informe. Verifica tus permisos o vuelve a iniciar sesión."
+      );
+      return;
+    }
+
+    setNotice("Informe eliminado correctamente.");
+
+    if (editing === r.id) {
+      setEditing(null);
+      setForm(createBlankForm());
+    }
+
+    await loadReports();
   }
 
   function restText(value) {
@@ -1271,57 +1345,71 @@ export default function App() {
               {reports.length === 0 ? (
                 <p>{t.noReports}</p>
               ) : (
-                reports.map(r => (
-                  <article className="report" key={r.id}>
-                    <div className="reporthead">
-                      <h3>
-                        {r.report_date} · {r.work_shift ? `Turno ${r.work_shift} · ` : ""}
-                        {r.operators}
-                      </h3>
+                reports.map(r => {
+                  const canManage =
+                    isAdmin || r.created_by === session.user.id;
 
-                      <div className="report-actions">
-                        <button
-                          className="secondary"
-                          onClick={() => exportPdf(r)}
-                        >
-                          PDF
-                        </button>
+                  return (
+                    <article className="report" key={r.id}>
+                      <div className="reporthead">
+                        <h3>
+                          {r.report_date} · {r.work_shift ? `Turno ${r.work_shift} · ` : ""}
+                          {r.operators}
+                        </h3>
 
-                        <button
-                          className="secondary"
-                          onClick={() => exportJpg(r)}
-                        >
-                          JPG
-                        </button>
-
-                        <button
-                          className="secondary"
-                          onClick={() => generateQR(r)}
-                        >
-                          QR
-                        </button>
-
-                        <button
-                          className="secondary"
-                          onClick={() => shareWhatsApp(r)}
-                        >
-                          WhatsApp
-                        </button>
-
-                        {(r.created_by === session.user.id || isAdmin) && (
+                        <div className="report-actions">
                           <button
                             className="secondary"
-                            onClick={() => edit(r)}
+                            onClick={() => exportPdf(r)}
                           >
-                            Editar
+                            PDF
                           </button>
-                        )}
-                      </div>
-                    </div>
 
-                    {renderReport(r)}
-                  </article>
-                ))
+                          <button
+                            className="secondary"
+                            onClick={() => exportJpg(r)}
+                          >
+                            JPG
+                          </button>
+
+                          <button
+                            className="secondary"
+                            onClick={() => generateQR(r)}
+                          >
+                            QR
+                          </button>
+
+                          <button
+                            className="secondary"
+                            onClick={() => shareWhatsApp(r)}
+                          >
+                            WhatsApp
+                          </button>
+
+                          {canManage && (
+                            <>
+                              <button
+                                className="secondary"
+                                onClick={() => edit(r)}
+                              >
+                                Editar
+                              </button>
+
+                              <button
+                                className="danger"
+                                onClick={() => deleteReport(r)}
+                              >
+                                Eliminar
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {renderReport(r)}
+                    </article>
+                  );
+                })
               )}
             </section>
           )}
