@@ -1,220 +1,449 @@
-:root{font-family:Inter,system-ui,Arial,sans-serif;color:#182923;background:#f2f5f2;font-synthesis:none}*{box-sizing:border-box}body{margin:0}main{max-width:1100px;margin:auto;padding:22px}header{display:flex;justify-content:space-between;align-items:center;background:#102a24;color:white;padding:20px 24px;border-radius:14px;margin-bottom:20px}.brand{font-weight:900;letter-spacing:1.5px;font-size:21px}.brand span{color:#c3d8a5}header small{color:#d1dfd2}.tools{display:flex;gap:10px;align-items:center}.panel{background:white;border:1px solid #dce5dd;border-radius:14px;padding:22px;margin:18px 0;box-shadow:0 5px 18px #102a240a}.login,.center{min-height:55vh;display:grid;place-content:center;text-align:center}.center{display:flex;align-items:center}.center .panel{max-width:650px}h1,h2{color:#16392d}h2{margin-top:0}button{background:#1b674b;color:white;border:0;border-radius:8px;padding:10px 15px;font-weight:700;cursor:pointer}button:hover{filter:brightness(.94)}button.secondary{background:#e8eee9;color:#214335}button.danger{background:#9d3434}select,input,textarea{font:inherit;border:1px solid #cbd8ce;border-radius:7px;padding:10px;background:white;color:#182923}select{padding:8px}.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:18px}.fields label{display:flex;flex-direction:column;gap:7px;font-weight:650;font-size:14px}.fields label.wide{grid-column:1/-1}.fields input[type=checkbox]{align-self:flex-start;width:20px;height:20px}.report{border-top:1px solid #e2e9e3;padding:16px 0}.reporthead{display:flex;justify-content:space-between;gap:10px;align-items:center}.reporthead h3{margin:0;color:#173e30}.report p{margin:7px 0}.userrow{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-top:1px solid #e5ebe6;gap:12px}.userrow small{display:block;color:#61746a;margin-top:4px}.notice{position:sticky;bottom:10px;background:#fff3d7;border:1px solid #e6ca82;padding:12px;border-radius:8px;cursor:pointer}footer{text-align:center;color:#65776c;padding:24px;font-size:13px}@media(max-width:650px){main{padding:10px}header{padding:15px;align-items:flex-start;gap:12px}.brand{font-size:16px}.tools{flex-direction:column;align-items:flex-end}.fields{grid-template-columns:1fr}.fields label.wide{grid-column:auto}.reporthead{align-items:flex-start;flex-direction:column}.userrow{align-items:flex-start;flex-direction:column}.panel{padding:16px}}.brand-area{
-  display:flex;
-  align-items:center;
-  gap:14px;
-  min-width:0;
+
+:root {
+  font-family: Inter, system-ui, Arial, sans-serif;
+  color: #182923;
+  background: #f3f6f3;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
 }
 
-.adeco-logo{
-  width:92px;
-  height:58px;
-  object-fit:contain;
-  background:#fff;
-  border-radius:8px;
-  padding:4px;
+* {
+  box-sizing: border-box;
 }
 
-@media(max-width:650px){
-  .brand-area{
-    gap:9px;
-  }
-  .adeco-logo{
-    width:68px;
-    height:48px;
-  }
-  .brand{
-    font-size:14px;
-  }
-}
-.qr-overlay{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.72);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  z-index:9999;
-  padding:20px;
+html {
+  min-width: 320px;
+  scroll-behavior: smooth;
 }
 
-.qr-modal{
-  width:min(420px,100%);
-  text-align:center;
+body {
+  margin: 0;
+  min-width: 320px;
+  background: #f3f6f3;
 }
 
-.qr-modal img{
-  width:300px;
-  max-width:100%;
-  height:auto;
-  background:#fff;
-  padding:10px;
-  border-radius:12px;
+button,
+input,
+select,
+textarea {
+  font: inherit;
 }
 
-.qr-modal button{
-  margin:6px;
+button {
+  background: #176849;
+  color: white;
+  border: 0;
+  border-radius: 9px;
+  padding: 11px 17px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .2s, transform .2s;
 }
 
-/* ===== MENU LATERAL ADECOAGRO ===== */
-
-.app-layout{
-  max-width:none;
-  width:100%;
-  min-height:100vh;
-  margin:0;
-  padding:20px 24px 20px 285px;
+button:hover {
+  background: #10543a;
 }
 
-.sidebar{
-  position:fixed;
-  top:0;
-  left:0;
-  bottom:0;
-  width:265px;
-  background:#102a24;
-  color:white;
-  padding:24px 18px;
-  z-index:1000;
-  overflow-y:auto;
+button:active {
+  transform: scale(.98);
 }
 
-.sidebar-user{
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-  padding:12px;
-  margin-bottom:24px;
-  overflow-wrap:anywhere;
+button:disabled {
+  opacity: .6;
+  cursor: not-allowed;
 }
 
-.sidebar-user strong{
-  font-size:16px;
-  color:white;
+button.secondary {
+  background: #e8f0eb;
+  color: #214335;
 }
 
-.sidebar-user small{
-  font-size:12px;
-  color:#d1dfd2;
+button.secondary:hover {
+  background: #d8e7dd;
 }
 
-.user-avatar{
-  font-size:28px;
+button.danger {
+  background: #a73535;
 }
 
-.sidebar-menu{
-  display:flex;
-  flex-direction:column;
-  gap:9px;
+input,
+select,
+textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #cbd8ce;
+  border-radius: 9px;
+  padding: 12px;
+  background: white;
+  color: #182923;
+  outline: none;
 }
 
-.sidebar-menu button{
-  width:100%;
-  text-align:left;
-  padding:12px;
-  border-radius:8px;
-  background:transparent;
-  color:white;
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #23815c;
+  box-shadow: 0 0 0 3px #23815c18;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 90px;
+}
+
+h1,
+h2,
+h3 {
+  color: #16392d;
+}
+
+h2 {
+  margin-top: 0;
+  margin-bottom: 22px;
+}
+
+/* ESTRUCTURA GENERAL */
+
+.app-layout {
+  max-width: none;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 20px 28px 20px 290px;
+}
+
+.panel {
+  width: 100%;
+  max-width: 1200px;
+  margin: 20px auto;
+  padding: 26px;
+  background: white;
+  border: 1px solid #dce7df;
+  border-radius: 16px;
+  box-shadow: 0 5px 22px #102a2409;
+}
+
+/* ENCABEZADO */
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  background: #102a24;
+  color: white;
+  padding: 17px 22px;
+  border-radius: 15px;
+  margin-bottom: 22px;
+  min-width: 0;
+}
+
+.brand-area {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.adeco-logo {
+  width: 88px;
+  height: 58px;
+  flex-shrink: 0;
+  object-fit: contain;
+  background: white;
+  border-radius: 9px;
+  padding: 4px;
+}
+
+.brand {
+  font-weight: 900;
+  letter-spacing: 1.2px;
+  font-size: 21px;
+  color: white;
+  overflow-wrap: anywhere;
+}
+
+.brand span {
+  color: #c3d8a5;
+}
+
+header small {
+  color: #d1dfd2;
+  display: block;
+  margin-top: 5px;
+}
+
+.tools {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.tools select {
+  width: auto;
+  min-width: 120px;
+  background: white;
+}
+
+/* MENÚ LATERAL */
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 265px;
+  background: #102a24;
+  color: white;
+  padding: 25px 17px;
+  z-index: 1000;
+  overflow-y: auto;
+  box-shadow: 4px 0 20px #102a2410;
+}
+
+.sidebar-user {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 14px 12px;
+  margin-bottom: 25px;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid #ffffff20;
+}
+
+.sidebar-user strong {
+  font-size: 16px;
+  color: white;
+}
+
+.sidebar-user small {
+  font-size: 12px;
+  color: #d1dfd2;
+  overflow-wrap: anywhere;
+}
+
+.user-avatar {
+  font-size: 32px;
+  margin-bottom: 5px;
+}
+
+.sidebar-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.sidebar-menu button {
+  width: 100%;
+  text-align: left;
+  padding: 13px 12px;
+  border-radius: 9px;
+  background: transparent;
+  color: #e5eee8;
+  font-size: 14px;
 }
 
 .sidebar-menu button:hover,
-.sidebar-menu .menu-active{
-  background:#1b674b;
-  color:white;
+.sidebar-menu .menu-active {
+  background: #1b674b;
+  color: white;
 }
 
-/* Adaptación para celulares */
+/* FORMULARIO */
 
-@media(max-width:750px){
-  .app-layout{
-    padding:12px 12px 12px 155px;
-  }
-
-  .sidebar{
-    width:145px;
-    padding:12px 8px;
-  }
-
-  .sidebar-menu button{
-    padding:9px 6px;
-    font-size:11px;
-  }
-
-  .sidebar-user{
-    padding:4px;
-    margin-bottom:14px;
-  }
-
-  .sidebar-user strong{
-    font-size:12px;
-  }
-
-  .sidebar-user small{
-    font-size:10px;
-  }
+.fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 22px;
 }
 
-/* ===== FONDO MARCA DE AGUA - LOGIN ===== */
-
-.login {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.96);
+.fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-weight: 650;
+  font-size: 14px;
+  min-width: 0;
 }
 
-.login::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: url("/tether-e-adecoagro-vao-minerar-bitcoin-com-cana-de.jpg");
-  background-position: center;
-  background-size: cover;
-  background-repeat: no-repeat;
-  opacity: 0.15;
-  z-index: -1;
-  pointer-events: none;
+.fields label.wide {
+  grid-column: 1 / -1;
 }
-/* ===== PANTALLA DE AUTENTICACION ADECOAGRO ===== */
 
-.login {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  width: 100%;
-  max-width: none;
-  min-height: 100vh;
-  min-height: 100svh;
+.fields input[type="checkbox"] {
+  align-self: flex-start;
+  width: 20px;
+  height: 20px;
+}
+
+/* HISTORIAL - TARJETAS */
+
+.report {
+  background: #fbfdfb;
+  border: 1px solid #dce7df;
+  border-radius: 14px;
+  padding: 20px;
+  margin: 18px 0;
+  box-shadow: 0 3px 12px #102a2408;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.reporthead {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  padding-bottom: 15px;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #e2e9e3;
+}
+
+.reporthead h3 {
   margin: 0;
-  padding: 45px 20px;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  background: rgba(255,255,255,0.92);
+  color: #173e30;
+  font-size: 17px;
+}
+
+.reporthead > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.reporthead button {
+  padding: 9px 12px;
+  font-size: 12px;
+}
+
+.report p {
+  display: block;
+  margin: 8px 0;
+  padding: 11px 13px;
+  background: #f0f5f1;
+  border-radius: 8px;
+  line-height: 1.55;
+  font-size: 14px;
+}
+
+.report p b {
+  color: #174c36;
+}
+
+/* USUARIOS */
+
+.userrow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 0;
+  border-top: 1px solid #e5ebe6;
+  gap: 14px;
+}
+
+.userrow small {
+  display: block;
+  color: #61746a;
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+}
+
+.userrow > span {
+  min-width: 0;
+}
+
+/* PERFIL */
+
+.profile-card {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 25px;
+  margin: 20px auto;
+  background: #f8fbf8;
+  border: 1px solid #dce7df;
+  border-radius: 15px;
+}
+
+.profile-photo,
+.profile-photo-placeholder {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid #dce9e2;
+}
+
+.profile-photo-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 55px;
+  background: #edf3ef;
+}
+
+.profile-card label {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-weight: 650;
+}
+
+.profile-card input {
+  width: 100%;
+}
+
+.profile-card button {
+  width: 100%;
+}
+
+/* LOGIN LIMPIO Y CENTRADO */
+
+.login {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  max-width: 650px;
+  min-height: 480px;
+  margin: 35px auto;
+  padding: 45px 25px;
+  border: 1px solid #dce7df;
+  border-radius: 20px;
+  background: linear-gradient(145deg, #ffffff, #f0f6f1);
+  box-shadow: 0 12px 40px #102a2410;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   gap: 18px;
   text-align: center;
+  overflow: hidden;
 }
 
+/* Oculta la antigua fotografía de fondo */
+
 .login::before {
-  opacity: 0.25;
-  background-position: center;
-  background-size: cover;
+  content: none;
 }
 
 .login h1 {
   margin: 0;
-  font-size: clamp(25px, 4vw, 42px);
+  font-size: clamp(25px, 4vw, 38px);
   line-height: 1.2;
 }
 
 .login h1::before {
   content: "";
   display: block;
-  width: clamp(150px, 22vw, 240px);
-  height: clamp(90px, 14vw, 145px);
+  width: 230px;
+  height: 135px;
+  max-width: 80%;
   margin: 0 auto 22px;
   background-image: url("/adeco-energia.jpg.jpg");
   background-repeat: no-repeat;
@@ -223,37 +452,267 @@
 }
 
 .login p {
-  font-size: clamp(15px, 2vw, 19px);
+  font-size: 17px;
+  color: #52685b;
   margin: 0;
+  line-height: 1.5;
 }
 
 .login button {
-  min-width: 220px;
+  min-width: 230px;
   padding: 14px 24px;
   font-size: 16px;
   margin-top: 10px;
 }
 
-@media (max-width: 650px) {
+/* MENSAJES */
+
+.notice {
+  position: sticky;
+  bottom: 12px;
+  z-index: 1100;
+  background: #fff3d7;
+  border: 1px solid #e6ca82;
+  padding: 14px;
+  border-radius: 9px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px #00000010;
+  overflow-wrap: anywhere;
+}
+
+footer {
+  text-align: center;
+  color: #65776c;
+  padding: 25px 10px;
+  font-size: 13px;
+}
+
+/* CÓDIGO QR */
+
+.qr-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 18px;
+}
+
+.qr-modal {
+  width: min(420px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  text-align: center;
+  margin: 0;
+}
+
+.qr-modal img {
+  width: 300px;
+  max-width: 100%;
+  height: auto;
+  background: white;
+  padding: 10px;
+  border-radius: 12px;
+}
+
+.qr-modal button {
+  margin: 6px;
+}
+
+/* PANTALLAS MEDIANAS */
+
+@media (max-width: 1000px) {
+  .app-layout {
+    padding-left: 265px;
+    padding-right: 18px;
+  }
+
+  .sidebar {
+    width: 245px;
+  }
+
+  .reporthead {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+/* CELULARES Y TABLETS */
+
+@media (max-width: 750px) {
+  .app-layout {
+    padding: 12px;
+  }
+
+  .sidebar {
+    position: relative;
+    top: auto;
+    left: auto;
+    bottom: auto;
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 16px;
+    border-radius: 13px;
+    overflow: visible;
+  }
+
+  .sidebar-user {
+    padding: 8px;
+    margin-bottom: 10px;
+    gap: 5px;
+  }
+
+  .sidebar-user strong {
+    font-size: 14px;
+  }
+
+  .sidebar-user small {
+    font-size: 11px;
+  }
+
+  .user-avatar {
+    font-size: 25px;
+  }
+
+  .sidebar-menu {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+
+  .sidebar-menu button {
+    width: auto;
+    flex: 1 1 135px;
+    min-height: 42px;
+    padding: 10px;
+    font-size: 12px;
+    text-align: center;
+  }
+
+  header {
+    padding: 13px;
+    gap: 10px;
+    border-radius: 12px;
+  }
+
+  .brand-area {
+    gap: 9px;
+  }
+
+  .adeco-logo {
+    width: 65px;
+    height: 48px;
+  }
+
+  .brand {
+    font-size: 14px;
+    letter-spacing: .5px;
+  }
+
+  header small {
+    font-size: 10px;
+  }
+
+  .tools select {
+    min-width: 95px;
+    font-size: 12px;
+  }
+
+  .panel {
+    padding: 17px;
+    margin: 13px auto;
+    border-radius: 13px;
+  }
+
+  .fields {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .fields label.wide {
+    grid-column: auto;
+  }
+
+  .report {
+    padding: 14px;
+  }
+
+  .reporthead {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .reporthead > div {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .reporthead button {
+    flex: 1 1 90px;
+  }
+
+  .userrow {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .login {
-    min-height: 100vh;
-    min-height: 100svh;
-    padding: 25px 16px;
-    gap: 16px;
+    min-height: 430px;
+    margin: 15px auto;
+    padding: 30px 18px;
   }
 
   .login h1::before {
-    width: 155px;
-    height: 95px;
-    margin-bottom: 18px;
+    width: 175px;
+    height: 105px;
+  }
+}
+
+/* CELULARES PEQUEÑOS */
+
+@media (max-width: 420px) {
+  .app-layout {
+    padding: 8px;
+  }
+
+  header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .brand-area {
+    justify-content: flex-start;
+  }
+
+  .tools {
+    justify-content: flex-end;
+  }
+
+  .panel {
+    padding: 13px;
+  }
+
+  .sidebar-menu button {
+    flex-basis: 100%;
+  }
+
+  .report p {
+    font-size: 13px;
+    padding: 9px;
+  }
+
+  .login h1 {
+    font-size: 24px;
   }
 
   .login button {
-    width: min(100%, 280px);
+    width: 100%;
+    min-width: 0;
   }
 
-  .login::before {
-    background-position: center;
-    background-size: cover;
+  .profile-card {
+    padding: 16px;
   }
 }
