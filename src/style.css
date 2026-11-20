@@ -278,7 +278,7 @@ header small {
   height: 20px;
 }
 
-/* HISTORIAL - TARJETAS */
+/* HISTORIAL */
 
 .report {
   background: #fbfdfb;
@@ -403,7 +403,7 @@ header small {
   width: 100%;
 }
 
-/* LOGIN LIMPIO Y CENTRADO */
+/* LOGIN */
 
 .login {
   position: relative;
@@ -425,8 +425,6 @@ header small {
   text-align: center;
   overflow: hidden;
 }
-
-/* Oculta la antigua fotografía de fondo */
 
 .login::before {
   content: none;
