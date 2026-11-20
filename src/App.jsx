@@ -246,39 +246,156 @@ function shareWhatsApp(r){
     "_blank"
   );
 }
+
 async function exportPdf(r){
-  const doc=new jsPDF();
-  doc.setFontSize(16);
-  doc.text("ADECOAGRO MINING CLOUD",14,18);
-  doc.setFontSize(12);
-  doc.text(`Relatório diário - ${r.report_date}`,14,29);
-  let y=42;
-  const rows=[
-    ["Operador(es)",r.operators],
-    ["Folga / Descanso",r.day_off==="No"?"Sem descanso":r.day_off?.includes("|")?`${r.day_off.split("|")[0]} — ${r.day_off.split("|").slice(1).join("|")}`:r.day_off||"-"],
-    ["Hashrate (PH/s)",r.hashrate_ph],
-    ["Mineradoras em operação",r.miners_online],
-    ["Mineradoras offline",r.miners_offline],
-    ["Disponibilidade (%)",r.availability_pct],
-    ["Consumo (MW)",r.power_mw],
-    ["Consumo do mês (kWh)",r.month_consumption_kwh],
-    ["Geradores em operação",r.generators_running],
-    ["Ocorrências",r.occurrences],
-    ["Manutenções",r.maintenance],
-    ["Pendências próximo turno",r.next_shift_pending],
-    ["Orientações da supervisão",r.supervisor_instructions]
-  ];
-  rows.forEach(([a,b])=>{
-    let lines=doc.splitTextToSize(`${a}: ${b??"-"}`,180);
-    if(y+lines.length*6>280){
-      doc.addPage();
-      y=18;
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 14;
+  const cardGap = 7;
+  const cardWidth = (pageWidth - margin * 2 - cardGap) / 2;
+  const fullWidth = pageWidth - margin * 2;
+
+  let y = 48;
+
+  function header(){
+    doc.setFillColor(16,42,36);
+    doc.rect(0,0,pageWidth,37,"F");
+
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(16);
+    doc.setFont("helvetica","bold");
+    doc.text("ADECOAGRO MINING CLOUD",margin,16);
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica","normal");
+    doc.text("RELATORIO DIARIO OPERACIONAL",margin,25);
+
+    doc.setTextColor(35,65,49);
+    doc.setFontSize(11);
+    doc.text(`Fecha: ${r.report_date || "-"}`,margin,44);
+  }
+
+  function newPage(){
+    doc.addPage();
+    header();
+    y = 53;
+  }
+
+  function drawCard(label,value,x,width){
+    const text = String(value ?? "-").trim() || "-";
+    const lines = doc.splitTextToSize(text,width-12);
+    const height = Math.max(20, 17 + lines.length * 5);
+
+    if(y + height > pageHeight - 16){
+      newPage();
     }
-    doc.text(lines,14,y);
-    y+=lines.length*7;
+
+    doc.setFillColor(246,249,246);
+    doc.setDrawColor(215,228,218);
+    doc.roundedRect(x,y,width,height,3,3,"FD");
+
+    doc.setFont("helvetica","bold");
+    doc.setFontSize(9);
+    doc.setTextColor(25,91,60);
+    doc.text(label,x+6,y+8);
+
+    doc.setFont("helvetica","normal");
+    doc.setFontSize(10);
+    doc.setTextColor(35,48,40);
+    doc.text(lines,x+6,y+15);
+
+    return height;
+  }
+
+  header();
+
+  const rest = r.day_off === "No"
+    ? "Sin descanso"
+    : r.day_off?.includes("|")
+      ? `${r.day_off.split("|")[0]} — ${r.day_off.split("|").slice(1).join("|")}`
+      : r.day_off || "-";
+
+  const metrics = [
+    ["Operadores",r.operators],
+    ["Descanso",rest],
+    ["Hashrate (PH/s)",r.hashrate_ph],
+    ["Disponibilidad (%)",r.availability_pct],
+    ["Mineradoras online",r.miners_online],
+    ["Mineradoras offline",r.miners_offline],
+    ["Consumo (MW)",r.power_mw],
+    ["Consumo mensual (kWh)",r.month_consumption_kwh],
+    ["Generadores en operación",`${r.generators_running ?? "-"}/3`]
+  ];
+
+  for(let i=0;i<metrics.length;i+=2){
+    const leftHeight = drawCard(
+      metrics[i][0],
+      metrics[i][1],
+      margin,
+      cardWidth
+    );
+
+    let rightHeight = 0;
+
+    if(metrics[i+1]){
+      rightHeight = drawCard(
+        metrics[i+1][0],
+        metrics[i+1][1],
+        margin+cardWidth+cardGap,
+        cardWidth
+      );
+    }
+
+    y += Math.max(leftHeight,rightHeight) + 5;
+  }
+
+  const details = [
+    ["OCORRÊNCIAS",r.occurrences],
+    ["MANUTENÇÕES REALIZADAS",r.maintenance],
+    ["PENDÊNCIAS DO PRÓXIMO TURNO",r.next_shift_pending],
+    ["ORIENTAÇÕES DA SUPERVISÃO",r.supervisor_instructions]
+  ];
+
+  details.forEach(([label,value])=>{
+    const text = String(value ?? "-").trim() || "-";
+    const lines = doc.splitTextToSize(text,fullWidth-12);
+    const height = Math.max(23,18+lines.length*5);
+
+    if(y+height>pageHeight-16){
+      newPage();
+    }
+
+    doc.setFillColor(246,249,246);
+    doc.setDrawColor(215,228,218);
+    doc.roundedRect(margin,y,fullWidth,height,3,3,"FD");
+
+    doc.setFont("helvetica","bold");
+    doc.setFontSize(9);
+    doc.setTextColor(25,91,60);
+    doc.text(label,margin+6,y+8);
+
+    doc.setFont("helvetica","normal");
+    doc.setFontSize(10);
+    doc.setTextColor(35,48,40);
+    doc.text(lines,margin+6,y+16);
+
+    y += height+6;
   });
+
+  doc.setFontSize(8);
+  doc.setTextColor(110,125,115);
+  doc.text(
+    "ADECOAGRO - Energia em crescimento",
+    pageWidth/2,
+    pageHeight-7,
+    {align:"center"}
+  );
+
   doc.save(`adecoagro-${r.report_date}.pdf`);
 }
+
+  
 
  async function exportJpg(r){const node=document.getElementById(`report-${r.id}`);if(!node)return;const data=await toJpeg(node,{quality:.92,backgroundColor:"#ffffff"});const a=document.createElement("a");a.href=data;a.download=`adecoagro-${r.report_date}.jpg`;a.click();}
  function label(k){
