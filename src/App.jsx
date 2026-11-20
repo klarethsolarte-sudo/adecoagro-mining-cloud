@@ -684,7 +684,7 @@ export default function App() {
   }
 
   return (
-    <main className="app-layout">
+   <main className={`app-layout ${session ? "authenticated" : "unauthenticated"}`}>
 
       <header>
         <div className="brand-area">
