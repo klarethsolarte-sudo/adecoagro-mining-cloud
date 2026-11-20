@@ -110,6 +110,34 @@ h2 {
   min-height: 100vh;
   margin: 0;
   padding: 20px 28px 20px 290px;
+  background: #f3f6f3;
+}
+
+/* PANTALLA DE INICIO DE SESIÓN */
+
+.app-layout.unauthenticated {
+  min-height: 100vh;
+  padding: 20px 28px;
+  background:
+    linear-gradient(
+      rgba(243, 246, 243, 0.82),
+      rgba(243, 246, 243, 0.92)
+    ),
+    url("/adeco-energia.jpg.jpg") center / cover fixed no-repeat;
+}
+
+/* PANTALLA DESPUÉS DE INICIAR SESIÓN */
+
+.app-layout.authenticated {
+  min-height: 100vh;
+  padding: 20px 28px 20px 290px;
+  background: #f3f6f3 !important;
+  background-image: none !important;
+}
+
+.app-layout.authenticated::before {
+  content: none !important;
+  display: none !important;
 }
 
 .panel {
@@ -527,6 +555,15 @@ footer {
     padding-right: 18px;
   }
 
+  .app-layout.unauthenticated {
+    padding: 20px 18px;
+  }
+
+  .app-layout.authenticated {
+    padding-left: 265px;
+    padding-right: 18px;
+  }
+
   .sidebar {
     width: 245px;
   }
@@ -541,6 +578,11 @@ footer {
 
 @media (max-width: 750px) {
   .app-layout {
+    padding: 12px;
+  }
+
+  .app-layout.unauthenticated,
+  .app-layout.authenticated {
     padding: 12px;
   }
 
@@ -672,6 +714,11 @@ footer {
 
 @media (max-width: 420px) {
   .app-layout {
+    padding: 8px;
+  }
+
+  .app-layout.unauthenticated,
+  .app-layout.authenticated {
     padding: 8px;
   }
 
