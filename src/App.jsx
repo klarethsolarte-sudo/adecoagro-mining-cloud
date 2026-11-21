@@ -1,4 +1,5 @@
-act, { useEffect, useState } from "react";
+
+import React, { useEffect, useState } from "react";
 import { toJpeg } from "html-to-image";
 import jsPDF from "jspdf";
 import QRCode from "qrcode";
@@ -1891,7 +1892,33 @@ export default function App() {
         y += 12;
       }
 
-      function drawCard(label, value, x, width) {
+      function getCardHeight(value, width) {
+  const text = String(value ?? "-").trim() || "-";
+  const lines = doc.splitTextToSize(text, width - 8);
+  return Math.max(19, 13 + lines.length * 4.5);
+}
+
+function drawCard(label, value, x, width, fixedHeight) {
+  const text = String(value ?? "-").trim() || "-";
+  const lines = doc.splitTextToSize(text, width - 8);
+  const height = fixedHeight || getCardHeight(value, width);
+
+  doc.setFillColor(251, 253, 251);
+  doc.setDrawColor(185, 203, 189);
+  doc.roundedRect(x, y, width, height, 2, 2, "FD");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(38, 112, 75);
+  doc.text(label, x + 4, y + 6);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(24, 41, 35);
+  doc.text(lines, x + 4, y + 12);
+
+  return height;
+}
         const text = String(value ?? "-").trim() || "-";
         const lines = doc.splitTextToSize(text, width - 8);
         const height = Math.max(19, 13 + lines.length * 4.5);
@@ -1933,7 +1960,43 @@ export default function App() {
         [t.generatorsLabel, `${r.generators_running ?? "-"}/3`]
       ];
 
-      for (let i = 0; i < metrics.length; i += 2) {
+  for (let i = 0; i < metrics.length; i += 2) {
+  const leftHeight = getCardHeight(
+    metrics[i][1],
+    cardWidth
+  );
+
+  const rightHeight = metrics[i + 1]
+    ? getCardHeight(metrics[i + 1][1], cardWidth)
+    : 0;
+
+  const rowHeight = Math.max(leftHeight, rightHeight);
+
+  // Mantener las dos tarjetas de la fila en la misma página.
+  if (y + rowHeight > pageHeight - 15) {
+    newPage();
+  }
+
+  drawCard(
+    metrics[i][0],
+    metrics[i][1],
+    margin,
+    cardWidth,
+    leftHeight
+  );
+
+  if (metrics[i + 1]) {
+    drawCard(
+      metrics[i + 1][0],
+      metrics[i + 1][1],
+      margin + cardWidth + gap,
+      cardWidth,
+      rightHeight
+    );
+  }
+
+  y += rowHeight + 5;
+}
         const leftHeight = drawCard(
           metrics[i][0],
           metrics[i][1],
