@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+act, { useEffect, useState } from "react";
 import { toJpeg } from "html-to-image";
 import jsPDF from "jspdf";
 import QRCode from "qrcode";
@@ -71,6 +71,7 @@ const translations = {
     "dayOff": "Folga",
     "medicalLeave": "Atestado",
     "timeBank": "Banco de horas",
+    "vacation": "Férias",
     "absence": "Falta",
     "noReports": "Nenhum relatório encontrado.",
     "edit": "Editar",
@@ -97,7 +98,6 @@ const translations = {
     "reportSubtitle": "RELATÓRIO DIÁRIO OPERACIONAL",
     "dateLabel": "DATA",
     "shiftLabel": "TURNO",
-    "shiftWord": "Turno",
     "noRestLabel": "Sem descanso",
     "mainAdmin": "Administrador principal",
     "accountLimit": "Limite planejado: 1 administrador + 9 operadores.",
@@ -167,13 +167,14 @@ const translations = {
     "selectOperationalDate": "Informe a data operacional.",
     "minersLimit": "O total de mineradoras online e offline não pode ultrapassar 1280.",
     "minersNegative": "A quantidade de mineradoras não pode ser negativa.",
+    "minersInteger": "Informe a quantidade de mineradoras em números inteiros.",
     "generatorsLimit": "O número de geradores deve estar entre 0 e 3.",
     "restPersonRequired": "Informe o nome da pessoa relacionada ao descanso/ausência.",
     "reportSaved": "Relatório salvo com sucesso.",
     "noEditPermission": "Você não tem permissão para editar este relatório.",
     "noDeletePermission": "Você não tem permissão para excluir este relatório.",
     "noPasswordPermission": "Você não tem permissão para alterar esta senha.",
-    "tempPasswordMin": "A senha temporária deve ter pelo menos 8 caracteres.",
+    "tempPasswordMin": "A senha temporária deve ter pelo menos 12 caracteres.",
     "tempPasswordMax": "A senha temporária deve ter no máximo 72 caracteres.",
     "confirmTempAssignment": "Deseja definir esta senha temporária para o operador?",
     "tempPasswordAssigned": "Senha temporária atribuída.",
@@ -277,6 +278,7 @@ const translations = {
     "dayOff": "Descanso",
     "medicalLeave": "Certificado médico",
     "timeBank": "Banco de horas",
+    "vacation": "Vacaciones",
     "absence": "Ausencia",
     "noReports": "No se encontraron informes.",
     "edit": "Editar",
@@ -303,7 +305,6 @@ const translations = {
     "reportSubtitle": "INFORME DIARIO OPERACIONAL",
     "dateLabel": "FECHA",
     "shiftLabel": "TURNO",
-    "shiftWord": "Turno",
     "noRestLabel": "Sin descanso",
     "mainAdmin": "Administrador principal",
     "accountLimit": "Límite previsto: 1 administrador + 9 operadores.",
@@ -373,13 +374,14 @@ const translations = {
     "selectOperationalDate": "Ingresa la fecha operacional.",
     "minersLimit": "El total de mineradoras en línea y fuera de línea no puede superar 1280.",
     "minersNegative": "La cantidad de mineradoras no puede ser negativa.",
+    "minersInteger": "Ingresa la cantidad de mineradoras en números enteros.",
     "generatorsLimit": "La cantidad de generadores debe estar entre 0 y 3.",
     "restPersonRequired": "Ingresa el nombre de la persona relacionada con el descanso/ausencia.",
     "reportSaved": "Informe guardado correctamente.",
     "noEditPermission": "No tienes permiso para editar este informe.",
     "noDeletePermission": "No tienes permiso para eliminar este informe.",
     "noPasswordPermission": "No tienes permiso para cambiar esta contraseña.",
-    "tempPasswordMin": "La contraseña temporal debe tener al menos 8 caracteres.",
+    "tempPasswordMin": "La contraseña temporal debe tener al menos 12 caracteres.",
     "tempPasswordMax": "La contraseña temporal debe tener como máximo 72 caracteres.",
     "confirmTempAssignment": "¿Deseas asignar esta contraseña temporal al operador?",
     "tempPasswordAssigned": "Contraseña temporal asignada.",
@@ -483,6 +485,7 @@ const translations = {
     "dayOff": "Day off",
     "medicalLeave": "Medical leave",
     "timeBank": "Time bank",
+    "vacation": "Vacation",
     "absence": "Absence",
     "noReports": "No reports found.",
     "edit": "Edit",
@@ -509,7 +512,6 @@ const translations = {
     "reportSubtitle": "DAILY OPERATIONAL REPORT",
     "dateLabel": "DATE",
     "shiftLabel": "SHIFT",
-    "shiftWord": "Shift",
     "noRestLabel": "No absence",
     "mainAdmin": "Main administrator",
     "accountLimit": "Planned limit: 1 administrator + 9 operators.",
@@ -579,13 +581,14 @@ const translations = {
     "selectOperationalDate": "Enter the operational date.",
     "minersLimit": "Online and offline miners cannot exceed 1280 in total.",
     "minersNegative": "Miner count cannot be negative.",
+    "minersInteger": "Enter miner counts as whole numbers.",
     "generatorsLimit": "The number of generators must be between 0 and 3.",
     "restPersonRequired": "Enter the name of the person related to the absence.",
     "reportSaved": "Report saved successfully.",
     "noEditPermission": "You do not have permission to edit this report.",
     "noDeletePermission": "You do not have permission to delete this report.",
     "noPasswordPermission": "You do not have permission to change this password.",
-    "tempPasswordMin": "Temporary password must contain at least 8 characters.",
+    "tempPasswordMin": "Temporary password must contain at least 12 characters.",
     "tempPasswordMax": "Temporary password must be no longer than 72 characters.",
     "confirmTempAssignment": "Do you want to set this temporary password for the operator?",
     "tempPasswordAssigned": "Temporary password assigned.",
@@ -1129,7 +1132,7 @@ export default function App() {
     window.history.replaceState(
       {},
       document.title,
-      window.location.pathname
+      window.location.pathname + window.location.search
     );
 
     setNotice(t.passwordUpdated);
@@ -1308,10 +1311,13 @@ export default function App() {
       return;
     }
 
-    if (online + offline > TOTAL_MINERS) {
-      setNotice(
-        "Error: las mineradoras operativas y offline no pueden superar las 1280 unidades."
-      );
+    if (
+      !Number.isFinite(online) ||
+      !Number.isFinite(offline) ||
+      !Number.isInteger(online) ||
+      !Number.isInteger(offline)
+    ) {
+      setNotice(t.minersInteger);
       return;
     }
 
@@ -1320,11 +1326,34 @@ export default function App() {
       return;
     }
 
+    if (online + offline > TOTAL_MINERS) {
+      setNotice(t.minersLimit);
+      return;
+    }
+
+    const generators = Number(form.generators_online);
+
     if (
-      Number(form.generators_online) < 0 ||
-      Number(form.generators_online) > 3
+      form.generators_online === "" ||
+      !Number.isInteger(generators) ||
+      generators < 0 ||
+      generators > 3
     ) {
       setNotice(t.generatorsLimit);
+      return;
+    }
+
+    const allowedRestTypes = [
+      "none",
+      "folga",
+      "atestado",
+      "banco de horas",
+      "ferias",
+      "falta"
+    ];
+
+    if (!allowedRestTypes.includes(form.rest_type)) {
+      setNotice(t.restPersonRequired);
       return;
     }
 
@@ -1428,13 +1457,24 @@ export default function App() {
       return;
     }
 
+    const temporaryPasswordBytes = new TextEncoder().encode(
+      temporaryPassword
+    ).length;
+
     if (temporaryPassword.length < 12) {
-      setNotice(t.tempPasswordMinLabel);
+      setNotice(t.tempPasswordMin);
       return;
     }
 
-    if (temporaryPassword.length > 128) {
+    if (temporaryPasswordBytes > 72) {
       setNotice(t.tempPasswordMax);
+      return;
+    }
+
+    const targetUser = users.find(user => user.id === id);
+
+    if (!targetUser || targetUser.role === "admin") {
+      setNotice(t.noPasswordPermission);
       return;
     }
 
@@ -1501,22 +1541,29 @@ export default function App() {
 
     setEditing(r.id);
 
-    const dayOff = r.day_off || "";
-    const oldType = dayOff.toLowerCase();
+    const dayOff = String(r.day_off || "").trim();
+    const dayOffParts = dayOff.split("|");
+    const savedRestType = (dayOffParts[0] || "").trim().toLowerCase();
+    const validRestTypes = [
+      "folga",
+      "atestado",
+      "banco de horas",
+      "ferias",
+      "falta"
+    ];
+    const restType = dayOffParts.length > 1
+      ? (validRestTypes.includes(savedRestType) ? savedRestType : "none")
+      : (validRestTypes.includes(savedRestType)
+        ? savedRestType
+        : (["sí", "sim"].includes(savedRestType) ? "folga" : "none"));
 
     setForm({
       report_date: r.report_date,
       work_shift: r.work_shift || "",
       operator_names: r.operators || "",
-      rest_type: dayOff.includes("|")
-        ? dayOff.split("|")[0]
-        : (
-          ["folga", "atestado", "banco de horas", "falta"].includes(oldType)
-            ? oldType
-            : (["sí", "sim"].includes(oldType) ? "folga" : "none")
-        ),
-      rest_person: dayOff.includes("|")
-        ? dayOff.split("|").slice(1).join("|")
+      rest_type: restType,
+      rest_person: dayOffParts.length > 1
+        ? dayOffParts.slice(1).join("|").trim()
         : "",
       hashrate: r.hashrate_ph ?? "",
       miners_online: r.miners_online ?? "",
@@ -1549,7 +1596,7 @@ export default function App() {
     }
 
     const confirmed = window.confirm(
-      `${t.confirmDelete}\n${r.report_date} · ${t.shiftWord} ${r.work_shift || "-"}`
+      `¿Deseas eliminar el informe del ${r.report_date}, turno ${r.work_shift || "-"}? Esta acción no se puede deshacer.`
     );
 
     if (!confirmed) return;
@@ -1569,13 +1616,13 @@ export default function App() {
     const { data, error } = await deleteQuery.select("id");
 
     if (error) {
-      setNotice(`${t.deleteFailed} ${error.message}`);
+      setNotice("No se pudo eliminar el informe: " + error.message);
       return;
     }
 
     if (!data || data.length === 0) {
       setNotice(
-        t.noDeleteResult
+        "No se eliminó el informe. Verifica tus permisos o vuelve a iniciar sesión."
       );
       return;
     }
@@ -1591,14 +1638,22 @@ export default function App() {
   }
 
   function restText(value) {
-    if (!value || value === "No") return t.noRest;
-
-    if (value.includes("|")) {
-      const parts = value.split("|");
-      return `${parts[0]} — ${parts.slice(1).join("|")}`;
+    if (!value || String(value).trim().toLowerCase() === "no") {
+      return t.noRest;
     }
 
-    return value;
+    const parts = String(value).split("|");
+    const type = (parts[0] || "").trim().toLowerCase();
+    const person = parts.slice(1).join("|").trim();
+    const translatedType = ({
+      folga: t.dayOff,
+      atestado: t.medicalLeave,
+      "banco de horas": t.timeBank,
+      ferias: t.vacation,
+      falta: t.absence
+    })[type] || parts[0];
+
+    return person ? `${translatedType} — ${person}` : translatedType;
   }
 
   function reportCell(label, value) {
@@ -1620,7 +1675,7 @@ export default function App() {
       [t.operators, r.operators],
       [t.restLabel, restText(r.day_off)],
       [t.hash, r.hashrate_ph],
-      [t.availabilityLabel, r.availability_pct],
+      [t.availabilityLabel, r.availability_pct == null ? "-" : `${Number(r.availability_pct).toFixed(2)}%`],
       [t.onlineLabel, r.miners_online],
       [t.offlineLabel, r.miners_offline],
       [t.powerLabel, r.power_mw],
@@ -1723,12 +1778,33 @@ export default function App() {
   function shareWhatsApp(r) {
     const url =
       `${window.location.origin}/?report=${encodeURIComponent(r.id)}`;
+    const value = item =>
+      item === null || item === undefined || item === "" ? "-" : String(item);
+    const reportText = [
+      "ADECOAGRO MINING CLOUD",
+      `${t.dateLabel}: ${value(r.report_date)}`,
+      `${t.shiftLabel}: ${value(r.work_shift)}`,
+      `${t.operators}: ${value(r.operators)}`,
+      `${t.restLabel}: ${restText(r.day_off)}`,
+      `${t.hash}: ${value(r.hashrate_ph)}`,
+      `${t.availabilityLabel}: ${r.availability_pct == null ? "-" : `${Number(r.availability_pct).toFixed(2)}%`}`,
+      `${t.onlineLabel}: ${value(r.miners_online)}`,
+      `${t.offlineLabel}: ${value(r.miners_offline)}`,
+      `${t.powerLabel}: ${value(r.power_mw)} MW`,
+      `${t.monthLabel}: ${value(r.month_consumption_kwh)} kWh`,
+      `${t.generatorsLabel}: ${value(r.generators_running)}/3`,
+      `${t.incidentsLabel}: ${value(r.occurrences)}`,
+      `${t.maintenanceLabel}: ${value(r.maintenance)}`,
+      `${t.pendingLabel}: ${value(r.next_shift_pending)}`,
+      `${t.guidanceLabel}: ${value(r.supervisor_instructions)}`,
+      "",
+      `${t.shareReport}: ${url}`
+    ].join("\n");
 
     window.open(
-      `https://wa.me/?text=${encodeURIComponent(
-        "ADECOAGRO MINING CLOUD - Informe operacional: " + url
-      )}`,
-      "_blank"
+      `https://wa.me/?text=${encodeURIComponent(reportText)}`,
+      "_blank",
+      "noopener,noreferrer"
     );
   }
 
@@ -1849,7 +1925,7 @@ export default function App() {
         [t.operators, r.operators],
         [t.restLabel, restText(r.day_off)],
         [t.hash, r.hashrate_ph],
-        [t.availabilityLabel, r.availability_pct],
+        [t.availabilityLabel, r.availability_pct == null ? "-" : `${Number(r.availability_pct).toFixed(2)}%`],
         [t.onlineLabel, r.miners_online],
         [t.offlineLabel, r.miners_offline],
         [t.powerLabel, r.power_mw],
@@ -1977,8 +2053,16 @@ export default function App() {
       <main className="center">
         <section className="panel">
           <h1>ADECOAGRO MINING CLOUD</h1>
-          <p>{t.supabaseMissing}</p>
-          <p>{t.supabaseSetup}</p>
+          <p>
+            O código está pronto para configurar, mas ainda faltam as
+            credenciais do projeto Supabase.
+          </p>
+          <p>
+            Crie um arquivo <code>.env</code> com base em{" "}
+            <code>.env.example</code>, preenchendo a URL e a chave
+            publicável do Supabase. Nunca coloque a chave service_role
+            no navegador.
+          </p>
         </section>
       </main>
     );
@@ -2197,7 +2281,7 @@ export default function App() {
           </form>
 
           <button className="secondary" onClick={signOut}>
-            {t.logout}
+            Salir
           </button>
         </section>
       ) : (
@@ -2207,7 +2291,7 @@ export default function App() {
               {profilePhoto ? (
                 <img
                   src={profilePhoto}
-                  alt={t.profilePhotoAlt}
+                  alt="Foto de perfil"
                   className="user-avatar"
                 />
               ) : (
@@ -2327,10 +2411,16 @@ export default function App() {
                       ) : k === "rest_type" ? (
                         <select
                           value={form.rest_type}
-                          onChange={e => setForm({
-                            ...form,
-                            rest_type: e.target.value
-                          })}
+                          onChange={e => {
+                            const selectedType = e.target.value;
+                            setForm({
+                              ...form,
+                              rest_type: selectedType,
+                              rest_person: selectedType === "none"
+                                ? ""
+                                : form.rest_person
+                            });
+                          }}
                         >
                           <option value="none">
                             {lang === "pt-BR"
@@ -2346,6 +2436,7 @@ export default function App() {
                             {lang === "pt-BR" ? "Atestado" : lang === "es-419" ? "Certificado médico" : "Medical leave"}
                           </option>
                           <option value="banco de horas">{t.timeBank}</option>
+                          <option value="ferias">{t.vacation}</option>
                           <option value="falta">
                             {lang === "pt-BR" ? "Falta" : lang === "es-419" ? "Ausencia" : "Absence"}
                           </option>
@@ -2356,11 +2447,12 @@ export default function App() {
                           lang={lang}
                           spellCheck={true}
                           value={form.rest_person}
+                          disabled={form.rest_type === "none"}
                           onChange={e => setForm({
                             ...form,
                             rest_person: e.target.value
                           })}
-                          placeholder={t.restPerson}
+                          placeholder={form.rest_type === "none" ? t.noRest : t.restPerson}
                           required={form.rest_type !== "none"}
                         />
                       ) : [
@@ -2451,7 +2543,7 @@ export default function App() {
                       setForm(createBlankForm());
                     }}
                   >
-                    {t.cancelEdit}
+                    Cancelar edición
                   </button>
                 )}
               </form>
@@ -2497,7 +2589,7 @@ export default function App() {
                     <article className="report" key={r.id}>
                       <div className="reporthead">
                         <h3>
-                          {r.report_date} · {r.work_shift ? `${t.shiftWord} ${r.work_shift} · ` : ""}
+                          {r.report_date} · {r.work_shift ? `Turno ${r.work_shift} · ` : ""}
                           {r.operators}
                         </h3>
 
@@ -2536,14 +2628,14 @@ export default function App() {
                                 className="secondary"
                                 onClick={() => edit(r)}
                               >
-                                {t.edit}
+                                Editar
                               </button>
 
                               <button
                                 className="danger"
                                 onClick={() => deleteReport(r)}
                               >
-                                {t.delete}
+                                Eliminar
                               </button>
                             </>
                           )}
@@ -2563,7 +2655,8 @@ export default function App() {
               <h2>{t.admin}</h2>
 
               <p>
-                {t.mainAdminPrefix} {ADMIN}. {t.accountLimit}
+                Administrador principal: {ADMIN}. Limite planejado:
+                1 administrador + 9 operadores.
               </p>
 
               {users.map(u => (
@@ -2611,7 +2704,7 @@ export default function App() {
                                 type="password"
                                 autoComplete="new-password"
                                 minLength={12}
-                                maxLength={128}
+                                maxLength={72}
                                 value={temporaryPassword}
                                 onChange={e => setTemporaryPassword(e.target.value)}
                                 placeholder={t.tempPasswordPlaceholder}
@@ -2623,7 +2716,8 @@ export default function App() {
                               onClick={() => assignTemporaryPassword(u.id)}
                               disabled={
                                 temporaryPasswordLoading ||
-                                temporaryPassword.length < 12
+                                temporaryPassword.length < 12 ||
+                                new TextEncoder().encode(temporaryPassword).length > 72
                               }
                             >
                               {temporaryPasswordLoading
@@ -2840,7 +2934,7 @@ export default function App() {
                 setQrImage("");
               }}
             >
-              {t.close}
+              Cerrar
             </button>
           </section>
         </div>
