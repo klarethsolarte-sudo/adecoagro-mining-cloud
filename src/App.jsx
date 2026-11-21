@@ -1,2274 +1,572 @@
-import React, { useEffect, useState } from "react";
-import { toJpeg } from "html-to-image";
-import jsPDF from "jspdf";
-import QRCode from "qrcode";
-import { configured, supabase } from "./supabase";
-
-const ADMIN = "klarethsolarte@gmail.com";
-const LOGO = "/adeco-energia.jpg.jpg";
-const TOTAL_MINERS = 1280;
-const PHOTO_BUCKET = "profile-photos";
-const MAX_PHOTO_SIZE = 3 * 1024 * 1024;
 
 const translations = {
   "pt-BR": {
+    // Autenticação
     login: "Entrar com Google",
+    or: "OU",
+    email: "E-mail",
+    password: "Senha",
+    show: "Mostrar",
+    hide: "Ocultar",
+    loginEmail: "Entrar com e-mail e senha",
+    forgotPassword: "Esqueceu sua senha?",
+    googleRegistration: "O cadastro inicial dos usuários é realizado pelo Google. Após acessar, você poderá definir uma senha em Meu perfil.",
+    emailPlaceholder: "Digite seu e-mail",
+    passwordPlaceholder: "Digite sua senha",
+    wait: "Aguarde...",
+    entering: "Entrando...",
+    loadingProfile: "Carregando perfil...",
+    newPassword: "Nova senha",
+    confirmPassword: "Confirmar senha",
+    updatePassword: "Atualizar senha",
+    savePassword: "Salvar senha",
+    updating: "Atualizando...",
+    mandatoryPassword: "Alteração obrigatória de senha",
+    temporaryPasswordInfo: "O administrador atribuiu uma senha temporária à sua conta. Para continuar, crie uma nova senha pessoal.",
+    passwordContinue: "Alterar senha e continuar",
+    logout: "Sair",
+
+    // Estados da conta
+    blocked: "Conta bloqueada",
+    pendingStatus: "Conta aguardando aprovação",
+    waiting: "Sua conta está aguardando a aprovação do administrador.",
+    contactAdmin: "Entre em contato com o administrador.",
+
+    // Navegação
+    home: "Início",
+    history: "Histórico geral",
+    admin: "Administração de usuários",
+    profile: "Meu perfil",
+
+    // Relatório
     title: "Relatório diário operacional",
     date: "Data operacional",
     shift: "Turno de trabalho",
     operator: "Operador(es)",
     rest: "Folga / Descanso",
+    restPerson: "Nome da pessoa",
     hash: "Hashrate (PH/s)",
     online: "Mineradoras em operação (Un.)",
     offline: "Mineradoras offline (Un.)",
     availability: "Disponibilidade (%)",
-    power: "Consumo (MW)",
-    month: "Consumo do mês (kWh)",
-    generators: "Geradores em operação (de 3)",
+    power: "Consumo de energia (MW)",
+    month: "Consumo mensal (kWh)",
+    generators: "Geradores em operação",
     events: "Ocorrências",
     maintenance: "Manutenções realizadas",
-    pending: "Pendências próximo turno",
-    guidance: "Orientações / determinações da supervisão",
+    pending: "Pendências para o próximo turno",
+    guidance: "Orientações da supervisão",
     save: "Salvar relatório",
-    history: "Histórico compartilhado",
-    admin: "Administração de usuários",
-    logout: "Sair",
-    pendingStatus: "Aguardando aprovação",
-    blocked: "Conta bloqueada",
-    waiting: "Sua conta foi registrada e aguarda aprovação do administrador.",
-    noReports: "Nenhum relatório encontrado."
+    cancelEdit: "Cancelar edição",
+    selectShift: "Selecionar turno",
+    select: "Selecionar",
+    shiftA: "Turno A — 07:00 às 15:20",
+    shiftB: "Turno B — 15:20 às 23:20",
+    shiftC: "Turno C — 23:20 às 07:00",
+    noRest: "Sem descanso",
+    dayOff: "Folga",
+    medicalLeave: "Atestado",
+    timeBank: "Banco de horas",
+    absence: "Falta",
+    noReports: "Nenhum relatório encontrado.",
+
+    // Histórico e relatório exportado
+    edit: "Editar",
+    delete: "Excluir",
+    shareReport: "Compartilhar relatório",
+    scanQR: "Escaneie para abrir este relatório.",
+    shareWhatsApp: "Compartilhar pelo WhatsApp",
+    close: "Fechar",
+    operationalInfo: "INFORMAÇÕES OPERACIONAIS",
+    shiftDetails: "DETALHES DO TURNO",
+    workShift: "TURNO DE TRABALHO",
+    operators: "OPERADORES",
+    restLabel: "DESCANSO",
+    availabilityLabel: "DISPONIBILIDADE (%)",
+    onlineLabel: "MINERADORAS ONLINE",
+    offlineLabel: "MINERADORAS OFFLINE",
+    powerLabel: "CONSUMO (MW)",
+    monthLabel: "CONSUMO MENSAL (kWh)",
+    generatorsLabel: "GERADORES EM OPERAÇÃO",
+    incidentsLabel: "OCORRÊNCIAS",
+    maintenanceLabel: "MANUTENÇÕES REALIZADAS",
+    pendingLabel: "PENDÊNCIAS DO PRÓXIMO TURNO",
+    guidanceLabel: "ORIENTAÇÕES DA SUPERVISÃO",
+    reportSubtitle: "RELATÓRIO DIÁRIO OPERACIONAL",
+    dateLabel: "DATA",
+    shiftLabel: "TURNO",
+    noRestLabel: "Sem descanso",
+
+    // Administração
+    mainAdmin: "Administrador principal",
+    accountLimit: "Limite planejado: 1 administrador + 9 operadores.",
+    approve: "Aprovar",
+    block: "Bloquear",
+    assignTempPassword: "Atribuir senha temporária",
+    tempPasswordLabel: "Senha temporária (mínimo 12 caracteres)",
+    tempPasswordPlaceholder: "Digite uma senha temporária",
+    confirmTempPassword: "Confirmar senha temporária",
+    assigning: "Atribuindo...",
+    cancel: "Cancelar",
+    tempPasswordInfo: "O operador deverá criar sua própria senha antes de voltar a utilizar o sistema.",
+    passwordChangePending: "Alteração de senha pendente",
+    accountStatus: "Estado da conta",
+    accountType: "Tipo de conta",
+
+    // Perfil
+    changePhoto: "Alterar fotografia",
+    uploadingPhoto: "Enviando fotografia...",
+    profileName: "Nome do perfil",
+    namePlaceholder: "Digite seu nome",
+    currentEmail: "E-mail atual",
+    saveChanges: "Salvar alterações",
+    saving: "Salvando...",
+    changeEmail: "Alterar e-mail",
+    emailVerificationInfo: "O Supabase enviará um link para verificar o novo e-mail.",
+    newEmail: "Novo e-mail",
+    newEmailPlaceholder: "novo@email.com",
+    send: "Enviando...",
+    requestEmailChange: "Solicitar alteração de e-mail",
+    passwordSection: "Senha",
+    passwordInfo: "Defina uma senha para entrar com e-mail além do Google, ou altere sua senha atual.",
+    minPassword: "Mínimo de 8 caracteres",
+    repeatPassword: "Digite a senha novamente",
+    updatePasswordButton: "Atualizar senha",
+    accountInfo: "Informações da conta",
+    lastAccess: "Último acesso",
+    unavailable: "Não disponível",
+    currentStatus: "Status da conta",
+
+    // Mensagens
+    enterEmailPassword: "Digite seu e-mail e sua senha.",
+    enterAccountEmail: "Digite o e-mail da sua conta.",
+    invalidEmail: "Digite um endereço de e-mail válido.",
+    passwordMin: "A senha deve ter pelo menos 8 caracteres.",
+    passwordMismatch: "As senhas não coincidem.",
+    passwordUpdated: "Senha atualizada com sucesso.",
+    emailSent: "Se existir uma conta com esse e-mail, você receberá um link para recuperar sua senha.",
+    emailChangeSent: "Solicitação enviada. Verifique o novo e-mail e conclua a verificação do Supabase.",
+    photoInvalid: "Selecione um arquivo de imagem válido.",
+    photoTooLarge: "A fotografia não pode exceder 3 MB.",
+    loginRequired: "Você precisa entrar para alterar sua foto.",
+    photoUpdated: "Foto do perfil atualizada com sucesso.",
+    nameRequired: "O nome não pode ficar vazio.",
+    profileUpdated: "Perfil atualizado com sucesso.",
+    selectWorkShift: "Selecione o turno de trabalho.",
+    selectOperationalDate: "Selecione a data operacional.",
+    minersLimit: "Erro: o total de mineradoras em operação e offline não pode ultrapassar 1280 unidades.",
+    minersNegative: "Os valores das mineradoras não podem ser negativos.",
+    generatorsLimit: "O número de geradores deve estar entre 0 e 3.",
+    restPersonRequired: "Informe o nome da pessoa.",
+    reportSaved: "Relatório salvo com sucesso.",
+    noEditPermission: "Você não tem autorização para modificar este relatório.",
+    noDeletePermission: "Você não tem autorização para excluir este relatório.",
+    noPasswordPermission: "Você não tem autorização para atribuir senhas.",
+    tempPasswordMin: "A senha temporária deve ter pelo menos 12 caracteres.",
+    tempPasswordMax: "A senha não pode exceder 128 caracteres.",
+    confirmTempAssignment: "Confirma a atribuição desta senha temporária? O operador deverá criar uma nova senha antes de utilizar o sistema.",
+    tempPasswordAssigned: "Senha temporária atribuída com sucesso.",
+    confirmDelete: "Deseja excluir o relatório de {date}, turno {shift}? Esta ação não pode ser desfeita.",
+    reportDeleted: "Relatório excluído com sucesso.",
+    deleteFailed: "Não foi possível excluir o relatório. Verifique suas permissões ou entre novamente.",
+    qrError: "Erro ao gerar o código QR: ",
+    pdfError: "Não foi possível gerar o PDF: ",
+    jpgError: "Não foi possível gerar o JPG: ",
+    reportNotFound: "Relatório não encontrado para exportação.",
+    emailError: "Não foi possível solicitar a alteração do e-mail: ",
+    passwordError: "Não foi possível atualizar a senha: ",
+    profileError: "Não foi possível salvar o perfil: ",
+    photoError: "Não foi possível carregar a foto. Verifique a configuração do armazenamento: ",
+    photoSaveError: "A foto foi carregada, mas não foi possível salvar no perfil: ",
+    tempPasswordError: "Não foi possível atribuir a senha temporária: ",
+    functionError: "A função não conseguiu concluir a operação.",
+    communicationError: "Erro ao comunicar com a função administrativa: ",
+    statusUpdated: "Status atualizado.",
+    noDeleteResult: "O relatório não foi excluído. Verifique suas permissões ou entre novamente.",
+    passwordAuthorizationError: "A senha foi alterada, mas não foi possível concluir a autorização: ",
+    supabaseMissing: "O código está pronto para configurar, mas faltam as credenciais do projeto Supabase.",
+    supabaseSetup: "Crie um arquivo .env com base em .env.example, preenchendo a URL e a chave publicável do Supabase. Nunca coloque a chave service_role no navegador.",
+    noAbsence: "Sem descanso",
+    footer: "ADECOAGRO · ENERGIA EM CRESCIMENTO"
   },
+
   "es-419": {
+    // Autenticación
     login: "Entrar con Google",
+    or: "O",
+    email: "Correo electrónico",
+    password: "Contraseña",
+    show: "Mostrar",
+    hide: "Ocultar",
+    loginEmail: "Entrar con correo y contraseña",
+    forgotPassword: "¿Olvidaste tu contraseña?",
+    googleRegistration: "El registro inicial de usuarios se realiza mediante Google. Después de acceder, podrás establecer una contraseña desde Mi perfil.",
+    emailPlaceholder: "Escribe tu correo electrónico",
+    passwordPlaceholder: "Escribe tu contraseña",
+    wait: "Espera...",
+    entering: "Entrando...",
+    loadingProfile: "Cargando perfil...",
+    newPassword: "Nueva contraseña",
+    confirmPassword: "Confirmar contraseña",
+    updatePassword: "Actualizar contraseña",
+    savePassword: "Guardar contraseña",
+    updating: "Actualizando...",
+    mandatoryPassword: "Cambio obligatorio de contraseña",
+    temporaryPasswordInfo: "El administrador asignó una contraseña temporal a tu cuenta. Para continuar, debes crear una nueva contraseña personal.",
+    passwordContinue: "Cambiar contraseña y continuar",
+    logout: "Salir",
+
+    // Estados de cuenta
+    blocked: "Cuenta bloqueada",
+    pendingStatus: "Cuenta pendiente de aprobación",
+    waiting: "Tu cuenta está esperando la aprobación del administrador.",
+    contactAdmin: "Comunícate con el administrador.",
+
+    // Navegación
+    home: "Inicio",
+    history: "Historial general",
+    admin: "Administración de usuarios",
+    profile: "Mi perfil",
+
+    // Informe
     title: "Informe diario operacional",
     date: "Fecha operacional",
     shift: "Turno de trabajo",
     operator: "Operador(es)",
-    rest: "Descanso",
+    rest: "Descanso / Ausencia",
+    restPerson: "Nombre de la persona",
     hash: "Hashrate (PH/s)",
     online: "Mineradoras en operación (Un.)",
-    offline: "Mineradoras fuera de línea (Un.)",
+    offline: "Mineradoras fuera de servicio (Un.)",
     availability: "Disponibilidad (%)",
-    power: "Consumo (MW)",
-    month: "Consumo del mes (kWh)",
-    generators: "Generadores en operación (de 3)",
+    power: "Consumo de energía (MW)",
+    month: "Consumo mensual (kWh)",
+    generators: "Generadores en operación",
     events: "Incidencias",
     maintenance: "Mantenimientos realizados",
     pending: "Pendientes del próximo turno",
-    guidance: "Orientaciones / determinaciones de supervisión",
+    guidance: "Orientaciones de supervisión",
     save: "Guardar informe",
-    history: "Historial compartido",
-    admin: "Administración de usuarios",
-    logout: "Salir",
-    pendingStatus: "Pendiente de aprobación",
-    blocked: "Cuenta bloqueada",
-    waiting: "Tu cuenta fue registrada y espera la aprobación del administrador.",
-    noReports: "No hay informes."
+    cancelEdit: "Cancelar edición",
+    selectShift: "Seleccionar turno",
+    select: "Seleccionar",
+    shiftA: "Turno A — 07:00 a 15:20",
+    shiftB: "Turno B — 15:20 a 23:20",
+    shiftC: "Turno C — 23:20 a 07:00",
+    noRest: "Sin descanso",
+    dayOff: "Descanso",
+    medicalLeave: "Certificado médico",
+    timeBank: "Banco de horas",
+    absence: "Ausencia",
+    noReports: "No se encontraron informes.",
+
+    // Historial e informe exportado
+    edit: "Editar",
+    delete: "Eliminar",
+    shareReport: "Compartir informe",
+    scanQR: "Escanea para abrir este informe.",
+    shareWhatsApp: "Compartir por WhatsApp",
+    close: "Cerrar",
+    operationalInfo: "INFORMACIÓN OPERACIONAL",
+    shiftDetails: "DETALLES DEL TURNO",
+    workShift: "TURNO DE TRABAJO",
+    operators: "OPERADORES",
+    restLabel: "DESCANSO",
+    availabilityLabel: "DISPONIBILIDAD (%)",
+    onlineLabel: "MINERADORAS ONLINE",
+    offlineLabel: "MINERADORAS OFFLINE",
+    powerLabel: "CONSUMO (MW)",
+    monthLabel: "CONSUMO MENSUAL (kWh)",
+    generatorsLabel: "GENERADORES EN OPERACIÓN",
+    incidentsLabel: "INCIDENCIAS",
+    maintenanceLabel: "MANTENIMIENTOS REALIZADOS",
+    pendingLabel: "PENDIENTES DEL PRÓXIMO TURNO",
+    guidanceLabel: "ORIENTACIONES DE SUPERVISIÓN",
+    reportSubtitle: "INFORME DIARIO OPERACIONAL",
+    dateLabel: "FECHA",
+    shiftLabel: "TURNO",
+    noRestLabel: "Sin descanso",
+
+    // Administración
+    mainAdmin: "Administrador principal",
+    accountLimit: "Límite previsto: 1 administrador + 9 operadores.",
+    approve: "Aprobar",
+    block: "Bloquear",
+    assignTempPassword: "Asignar contraseña temporal",
+    tempPasswordLabel: "Contraseña temporal (mínimo 12 caracteres)",
+    tempPasswordPlaceholder: "Escribe una contraseña temporal",
+    confirmTempPassword: "Confirmar contraseña temporal",
+    assigning: "Asignando...",
+    cancel: "Cancelar",
+    tempPasswordInfo: "El operador deberá crear su propia contraseña antes de volver a utilizar el sistema.",
+    passwordChangePending: "Cambio de contraseña pendiente",
+    accountStatus: "Estado de la cuenta",
+    accountType: "Tipo de cuenta",
+
+    // Perfil
+    changePhoto: "Cambiar fotografía",
+    uploadingPhoto: "Subiendo fotografía...",
+    profileName: "Nombre del perfil",
+    namePlaceholder: "Escribe tu nombre",
+    currentEmail: "Correo electrónico actual",
+    saveChanges: "Guardar cambios",
+    saving: "Guardando...",
+    changeEmail: "Cambiar correo electrónico",
+    emailVerificationInfo: "Supabase enviará un enlace para verificar el nuevo correo.",
+    newEmail: "Nuevo correo electrónico",
+    newEmailPlaceholder: "nuevo@correo.com",
+    send: "Enviando...",
+    requestEmailChange: "Solicitar cambio de correo",
+    passwordSection: "Contraseña",
+    passwordInfo: "Establece una contraseña para entrar con correo además de Google, o cambia tu contraseña actual.",
+    minPassword: "Mínimo 8 caracteres",
+    repeatPassword: "Repite la contraseña",
+    updatePasswordButton: "Actualizar contraseña",
+    accountInfo: "Información de la cuenta",
+    lastAccess: "Último acceso",
+    unavailable: "No disponible",
+    currentStatus: "Estado de la cuenta",
+
+    // Mensajes
+    enterEmailPassword: "Introduce tu correo y contraseña.",
+    enterAccountEmail: "Introduce el correo electrónico de tu cuenta.",
+    invalidEmail: "Introduce un correo electrónico válido.",
+    passwordMin: "La contraseña debe tener al menos 8 caracteres.",
+    passwordMismatch: "Las contraseñas no coinciden.",
+    passwordUpdated: "Contraseña actualizada correctamente.",
+    emailSent: "Si existe una cuenta con ese correo, recibirás un enlace para recuperar tu contraseña.",
+    emailChangeSent: "Solicitud enviada. Revisa el nuevo correo y completa la verificación de Supabase.",
+    photoInvalid: "Selecciona un archivo de imagen válido.",
+    photoTooLarge: "La fotografía no puede superar los 3 MB.",
+    loginRequired: "Debes iniciar sesión para cambiar tu fotografía.",
+    photoUpdated: "Fotografía de perfil actualizada correctamente.",
+    nameRequired: "El nombre no puede estar vacío.",
+    profileUpdated: "Perfil actualizado correctamente.",
+    selectWorkShift: "Selecciona el turno de trabajo.",
+    selectOperationalDate: "Selecciona la fecha operacional.",
+    minersLimit: "Error: las mineradoras en operación y fuera de servicio no pueden superar las 1280 unidades.",
+    minersNegative: "Los valores de las mineradoras no pueden ser negativos.",
+    generatorsLimit: "El número de generadores debe estar entre 0 y 3.",
+    restPersonRequired: "Indica el nombre de la persona.",
+    reportSaved: "Informe guardado correctamente.",
+    noEditPermission: "No tienes autorización para modificar este informe.",
+    noDeletePermission: "No tienes autorización para eliminar este informe.",
+    noPasswordPermission: "No tienes autorización para asignar contraseñas.",
+    tempPasswordMin: "La contraseña temporal debe tener al menos 12 caracteres.",
+    tempPasswordMax: "La contraseña no puede superar los 128 caracteres.",
+    confirmTempAssignment: "¿Confirmas la asignación de esta contraseña temporal? El operador deberá crear una nueva contraseña antes de utilizar el sistema.",
+    tempPasswordAssigned: "Contraseña temporal asignada correctamente.",
+    confirmDelete: "¿Deseas eliminar el informe del {date}, turno {shift}? Esta acción no se puede deshacer.",
+    reportDeleted: "Informe eliminado correctamente.",
+    deleteFailed: "No se eliminó el informe. Verifica tus permisos o vuelve a iniciar sesión.",
+    qrError: "Error al generar el código QR: ",
+    pdfError: "No se pudo generar el PDF: ",
+    jpgError: "No se pudo generar el JPG: ",
+    reportNotFound: "No se encontró el informe para exportar.",
+    emailError: "No se pudo solicitar el cambio de correo: ",
+    passwordError: "No se pudo actualizar la contraseña: ",
+    profileError: "No se pudo guardar el perfil: ",
+    photoError: "No se pudo cargar la fotografía. Comprueba la configuración del almacenamiento: ",
+    photoSaveError: "La fotografía se cargó, pero no se pudo guardar en el perfil: ",
+    tempPasswordError: "No se pudo asignar la contraseña temporal: ",
+    functionError: "La función no pudo completar la operación.",
+    communicationError: "Error al comunicarse con la función administrativa: ",
+    statusUpdated: "Estado actualizado.",
+    noDeleteResult: "No se eliminó el informe. Verifica tus permisos o vuelve a iniciar sesión.",
+    passwordAuthorizationError: "La contraseña cambió, pero no se pudo completar la autorización: ",
+    supabaseMissing: "El código está listo para configurar, pero faltan las credenciales del proyecto Supabase.",
+    supabaseSetup: "Crea un archivo .env basado en .env.example e introduce la URL y la clave publicable de Supabase. Nunca coloques la clave service_role en el navegador.",
+    noAbsence: "Sin descanso",
+    footer: "ADECOAGRO · ENERGÍA EN CRECIMIENTO"
   },
+
   "en-US": {
+    // Authentication
     login: "Sign in with Google",
+    or: "OR",
+    email: "Email address",
+    password: "Password",
+    show: "Show",
+    hide: "Hide",
+    loginEmail: "Sign in with email and password",
+    forgotPassword: "Forgot your password?",
+    googleRegistration: "Initial user registration is done through Google. After signing in, you can set a password in My Profile.",
+    emailPlaceholder: "Enter your email",
+    passwordPlaceholder: "Enter your password",
+    wait: "Please wait...",
+    entering: "Signing in...",
+    loadingProfile: "Loading profile...",
+    newPassword: "New password",
+    confirmPassword: "Confirm password",
+    updatePassword: "Update password",
+    savePassword: "Save password",
+    updating: "Updating...",
+    mandatoryPassword: "Password change required",
+    temporaryPasswordInfo: "The administrator assigned a temporary password to your account. To continue, you must create a new personal password.",
+    passwordContinue: "Change password and continue",
+    logout: "Sign out",
+
+    // Account status
+    blocked: "Account blocked",
+    pendingStatus: "Account pending approval",
+    waiting: "Your account is waiting for administrator approval.",
+    contactAdmin: "Please contact the administrator.",
+
+    // Navigation
+    home: "Home",
+    history: "General history",
+    admin: "User administration",
+    profile: "My Profile",
+
+    // Report
     title: "Daily operational report",
     date: "Operational date",
     shift: "Work shift",
     operator: "Operator(s)",
-    rest: "Off duty / Rest",
+    rest: "Day off / Leave",
+    restPerson: "Person's name",
     hash: "Hashrate (PH/s)",
-    online: "Miners operating (Units)",
+    online: "Miners online (Units)",
     offline: "Miners offline (Units)",
     availability: "Availability (%)",
     power: "Power consumption (MW)",
     month: "Monthly consumption (kWh)",
-    generators: "Generators operating (of 3)",
+    generators: "Generators running",
     events: "Incidents",
     maintenance: "Maintenance performed",
-    pending: "Next shift pending items",
-    guidance: "Supervisor instructions / decisions",
+    pending: "Pending items for next shift",
+    guidance: "Supervisor instructions",
     save: "Save report",
-    history: "Shared history",
-    admin: "User administration",
-    logout: "Sign out",
-    pendingStatus: "Awaiting approval",
-    blocked: "Account blocked",
-    waiting: "Your account is registered and awaits administrator approval.",
-    noReports: "No reports found."
+    cancelEdit: "Cancel editing",
+    selectShift: "Select shift",
+    select: "Select",
+    shiftA: "Shift A — 07:00 to 15:20",
+    shiftB: "Shift B — 15:20 to 23:20",
+    shiftC: "Shift C — 23:20 to 07:00",
+    noRest: "No absence",
+    dayOff: "Day off",
+    medicalLeave: "Medical leave",
+    timeBank: "Time bank",
+    absence: "Absence",
+    noReports: "No reports found.",
+
+    // History and exported report
+    edit: "Edit",
+    delete: "Delete",
+    shareReport: "Share report",
+    scanQR: "Scan to open this report.",
+    shareWhatsApp: "Share via WhatsApp",
+    close: "Close",
+    operationalInfo: "OPERATIONAL INFORMATION",
+    shiftDetails: "SHIFT DETAILS",
+    workShift: "WORK SHIFT",
+    operators: "OPERATORS",
+    restLabel: "DAY OFF",
+    availabilityLabel: "AVAILABILITY (%)",
+    onlineLabel: "MINERS ONLINE",
+    offlineLabel: "MINERS OFFLINE",
+    powerLabel: "POWER CONSUMPTION (MW)",
+    monthLabel: "MONTHLY CONSUMPTION (kWh)",
+    generatorsLabel: "GENERATORS RUNNING",
+    incidentsLabel: "INCIDENTS",
+    maintenanceLabel: "MAINTENANCE PERFORMED",
+    pendingLabel: "PENDING ITEMS FOR NEXT SHIFT",
+    guidanceLabel: "SUPERVISOR INSTRUCTIONS",
+    reportSubtitle: "DAILY OPERATIONAL REPORT",
+    dateLabel: "DATE",
+    shiftLabel: "SHIFT",
+    noRestLabel: "No absence",
+
+    // Administration
+    mainAdmin: "Main administrator",
+    accountLimit: "Planned limit: 1 administrator + 9 operators.",
+    approve: "Approve",
+    block: "Block",
+    assignTempPassword: "Assign temporary password",
+    tempPasswordLabel: "Temporary password (at least 12 characters)",
+    tempPasswordPlaceholder: "Enter a temporary password",
+    confirmTempPassword: "Confirm temporary password",
+    assigning: "Assigning...",
+    cancel: "Cancel",
+    tempPasswordInfo: "The operator must create their own password before using the system again.",
+    passwordChangePending: "Password change pending",
+    accountStatus: "Account status",
+    accountType: "Account type",
+
+    // Profile
+    changePhoto: "Change photo",
+    uploadingPhoto: "Uploading photo...",
+    profileName: "Profile name",
+    namePlaceholder: "Enter your name",
+    currentEmail: "Current email address",
+    saveChanges: "Save changes",
+    saving: "Saving...",
+    changeEmail: "Change email address",
+    emailVerificationInfo: "Supabase will send a link to verify the new email address.",
+    newEmail: "New email address",
+    newEmailPlaceholder: "new@email.com",
+    send: "Sending...",
+    requestEmailChange: "Request email change",
+    passwordSection: "Password",
+    passwordInfo: "Set a password to sign in with email as well as Google, or change your current password.",
+    minPassword: "At least 8 characters",
+    repeatPassword: "Re-enter your password",
+    updatePasswordButton: "Update password",
+    accountInfo: "Account information",
+    lastAccess: "Last sign-in",
+    unavailable: "Unavailable",
+    currentStatus: "Account status",
+
+    // Messages
+    enterEmailPassword: "Enter your email and password.",
+    enterAccountEmail: "Enter your account email address.",
+    invalidEmail: "Enter a valid email address.",
+    passwordMin: "Your password must be at least 8 characters long.",
+    passwordMismatch: "The passwords do not match.",
+    passwordUpdated: "Password updated successfully.",
+    emailSent: "If an account exists with that email, you will receive a password recovery link.",
+    emailChangeSent: "Request sent. Check your new email and complete Supabase verification.",
+    photoInvalid: "Select a valid image file.",
+    photoTooLarge: "The photo cannot exceed 3 MB.",
+    loginRequired: "You must sign in to change your photo.",
+    photoUpdated: "Profile photo updated successfully.",
+    nameRequired: "Name cannot be empty.",
+    profileUpdated: "Profile updated successfully.",
+    selectWorkShift: "Select the work shift.",
+    selectOperationalDate: "Select the operational date.",
+    minersLimit: "Error: online and offline miners cannot exceed 1,280 units.",
+    minersNegative: "Miner values cannot be negative.",
+    generatorsLimit: "The number of generators must be between 0 and 3.",
+    restPersonRequired: "Enter the person's name.",
+    reportSaved: "Report saved successfully.",
+    noEditPermission: "You are not authorized to edit this report.",
+    noDeletePermission: "You are not authorized to delete this report.",
+    noPasswordPermission: "You are not authorized to assign passwords.",
+    tempPasswordMin: "The temporary password must be at least 12 characters long.",
+    tempPasswordMax: "The password cannot exceed 128 characters.",
+    confirmTempAssignment: "Are you sure you want to assign this temporary password? The operator must create a new password before using the system.",
+    tempPasswordAssigned: "Temporary password assigned successfully.",
+    confirmDelete: "Do you want to delete the report dated {date}, shift {shift}? This action cannot be undone.",
+    reportDeleted: "Report deleted successfully.",
+    deleteFailed: "The report was not deleted. Check your permissions or sign in again.",
+    qrError: "Error generating QR code: ",
+    pdfError: "Could not generate PDF: ",
+    jpgError: "Could not generate JPG: ",
+    reportNotFound: "The report to export could not be found.",
+    emailError: "Could not request email change: ",
+    passwordError: "Could not update password: ",
+    profileError: "Could not save profile: ",
+    photoError: "Could not upload photo. Check storage configuration: ",
+    photoSaveError: "The photo was uploaded, but could not be saved to the profile: ",
+    tempPasswordError: "Could not assign temporary password: ",
+    functionError: "The function could not complete the operation.",
+    communicationError: "Error communicating with the administrative function: ",
+    statusUpdated: "Status updated.",
+    noDeleteResult: "The report was not deleted. Check your permissions or sign in again.",
+    passwordAuthorizationError: "The password was changed, but authorization could not be completed: ",
+    supabaseMissing: "The code is ready to configure, but the Supabase project credentials are missing.",
+    supabaseSetup: "Create a .env file based on .env.example and enter the Supabase URL and publishable key. Never put the service_role key in the browser.",
+    noAbsence: "No absence",
+    footer: "ADECOAGRO · ENERGY IN GROWTH"
   }
 };
-
-function getLocalDate(date = new Date()) {
-  return [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, "0"),
-    String(date.getDate()).padStart(2, "0")
-  ].join("-");
-}
-
-function getOperationalInfo(date = new Date()) {
-  const minutes = date.getHours() * 60 + date.getMinutes();
-
-  let work_shift;
-  const operationalDate = new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate()
-  );
-
-  if (minutes >= 420 && minutes < 920) {
-    work_shift = "A";
-  } else if (minutes >= 920 && minutes < 1400) {
-    work_shift = "B";
-  } else {
-    work_shift = "C";
-
-    if (minutes < 420) {
-      operationalDate.setDate(operationalDate.getDate() - 1);
-    }
-  }
-
-  return {
-    report_date: getLocalDate(operationalDate),
-    work_shift
-  };
-}
-
-function createBlankForm() {
-  return {
-    ...getOperationalInfo(),
-    operator_names: "",
-    rest_type: "none",
-    rest_person: "",
-    hashrate: "",
-    miners_online: "",
-    miners_offline: "",
-    availability: "",
-    power_mw: "",
-    monthly_kwh: "",
-    generators_online: "",
-    incidents: "",
-    maintenance: "",
-    next_shift_pending: "",
-    supervisor_guidance: ""
-  };
-}
-
-const fields = [
-  "report_date",
-  "work_shift",
-  "operator_names",
-  "rest_type",
-  "rest_person",
-  "hashrate",
-  "miners_online",
-  "miners_offline",
-  "availability",
-  "power_mw",
-  "monthly_kwh",
-  "generators_online",
-  "incidents",
-  "maintenance",
-  "next_shift_pending",
-  "supervisor_guidance"
-];
-
-const reportStyles = {
-  container: {
-    background: "#ffffff",
-    color: "#182923",
-    border: "1px solid #cbd8ce",
-    borderRadius: "12px",
-    padding: "18px",
-    width: "100%",
-    fontFamily: "Arial, sans-serif",
-    boxSizing: "border-box"
-  },
-  header: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "16px",
-    borderBottom: "3px solid #1c6040",
-    paddingBottom: "14px",
-    marginBottom: "14px",
-    textAlign: "center",
-    flexWrap: "wrap"
-  },
-  logo: {
-    width: "95px",
-    height: "75px",
-    objectFit: "contain"
-  },
-  brand: {
-    color: "#164d35",
-    fontSize: "19px",
-    fontWeight: "bold",
-    margin: "0 0 5px"
-  },
-  subtitle: {
-    color: "#607268",
-    fontSize: "11px",
-    letterSpacing: "1px",
-    margin: 0
-  },
-  sectionTitle: {
-    background: "#164d35",
-    color: "#ffffff",
-    padding: "9px 12px",
-    borderRadius: "5px",
-    fontSize: "12px",
-    fontWeight: "bold",
-    margin: "16px 0 9px",
-    letterSpacing: "0.4px"
-  },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-    gap: "9px"
-  },
-  cell: {
-    border: "1px solid #b9cbbd",
-    borderRadius: "6px",
-    padding: "10px",
-    minWidth: 0,
-    background: "#fbfdfb",
-    boxSizing: "border-box"
-  },
-  cellLabel: {
-    display: "block",
-    color: "#26704b",
-    fontSize: "10px",
-    fontWeight: "bold",
-    textTransform: "uppercase",
-    marginBottom: "7px"
-  },
-  cellValue: {
-    display: "block",
-    color: "#182923",
-    fontSize: "14px",
-    fontWeight: "600",
-    overflowWrap: "anywhere",
-    whiteSpace: "pre-wrap",
-    minHeight: "18px"
-  },
-  footer: {
-    borderTop: "1px solid #cbd8ce",
-    marginTop: "16px",
-    paddingTop: "10px",
-    color: "#718078",
-    fontSize: "10px",
-    textAlign: "center"
-  }
-};
-
-export default function App() {
-  const [session, setSession] = useState(null);
-  const [profile, setProfile] = useState(null);
-
-  const [lang, setLang] = useState(
-    localStorage.getItem("amc-lang") || "pt-BR"
-  );
-
-  const [form, setForm] = useState(createBlankForm);
-  const [reports, setReports] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [editing, setEditing] = useState(null);
-  const [notice, setNotice] = useState("");
-
-  const [qrReport, setQrReport] = useState(null);
-  const [qrImage, setQrImage] = useState("");
-
-  const [activeSection, setActiveSection] = useState("home");
-  const [profileName, setProfileName] = useState("");
-  const [savingProfile, setSavingProfile] = useState(false);
-
-  // Autenticación por correo y contraseña
-  const [authEmail, setAuthEmail] = useState("");
-  const [authPassword, setAuthPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [authLoading, setAuthLoading] = useState(false);
-
-  // Recuperación y establecimiento de contraseña
-  const [recoveryMode, setRecoveryMode] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordLoading, setPasswordLoading] = useState(false);
-
-  // Cambio de correo
-  const [newEmail, setNewEmail] = useState("");
-  const [emailLoading, setEmailLoading] = useState(false);
-
-  // Fotografía de perfil
-  const [photoLoading, setPhotoLoading] = useState(false);
-
-  // Administración de contraseñas temporales
-  const [temporaryPasswordUser, setTemporaryPasswordUser] = useState("");
-  const [temporaryPassword, setTemporaryPassword] = useState("");
-  const [temporaryPasswordLoading, setTemporaryPasswordLoading] = useState(false);
-
-  const t = translations[lang] || translations["pt-BR"];
-
-  const availability = form.miners_online === ""
-    ? "0.00"
-    : (
-        (Number(form.miners_online) / TOTAL_MINERS) * 100
-      ).toFixed(2);
-
-  const isAdmin =
-    session?.user?.email?.toLowerCase() === ADMIN;
-
-  const userName =
-    profile?.full_name ||
-    session?.user?.user_metadata?.full_name ||
-    session?.user?.user_metadata?.name ||
-    session?.user?.email ||
-    "Usuario";
-
-  const profilePhoto =
-    profile?.avatar_url ||
-    session?.user?.user_metadata?.avatar_url ||
-    session?.user?.user_metadata?.picture ||
-    "";
-
-  const mustChangePassword =
-    Boolean(profile?.must_change_password);
-
-  useEffect(() => {
-    if (!configured) return;
-
-    const hash = new URLSearchParams(
-      window.location.hash.replace(/^#/, "")
-    );
-
-    if (hash.get("type") === "recovery") {
-      setRecoveryMode(true);
-    }
-
-    supabase.auth.getSession().then(({ data, error }) => {
-      if (error) {
-        setNotice(error.message);
-        return;
-      }
-
-      setSession(data.session);
-    });
-
-    const {
-      data: { subscription }
-    } = supabase.auth.onAuthStateChange((event, newSession) => {
-      setSession(newSession);
-
-      if (event === "PASSWORD_RECOVERY") {
-        setRecoveryMode(true);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (session) {
-      loadProfile();
-    } else {
-      setProfile(null);
-      setReports([]);
-      setUsers([]);
-    }
-  }, [session]);
-
-  useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("report")) {
-      setActiveSection("history");
-    }
-  }, []);
-
-  async function loadProfile() {
-    const currentSession = session;
-
-    if (!currentSession?.user?.id) return;
-
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", currentSession.user.id)
-      .maybeSingle();
-
-    if (error) {
-      setNotice(error.message);
-      return;
-    }
-
-    setProfile(data);
-
-    setProfileName(
-      data?.full_name ||
-      currentSession.user.user_metadata?.full_name ||
-      currentSession.user.user_metadata?.name ||
-      ""
-    );
-
-    if (
-      data?.status === "approved" &&
-      !data?.must_change_password
-    ) {
-      await loadReports();
-
-      if (
-        currentSession.user.email?.toLowerCase() === ADMIN
-      ) {
-        await loadUsers();
-      }
-    }
-  }
-
-  async function loadReports() {
-    const sharedId = new URLSearchParams(
-      window.location.search
-    ).get("report");
-
-    let query = supabase.from("daily_reports").select("*");
-
-    if (sharedId) {
-      query = query.eq("id", sharedId);
-    }
-
-    const { data, error } = await query.order(
-      "report_date",
-      { ascending: false }
-    );
-
-    if (error) {
-      setNotice(error.message);
-    } else {
-      setReports(data || []);
-    }
-  }
-
-  async function loadUsers() {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id,email,full_name,role,status,created_at,must_change_password")
-      .order("created_at");
-
-    if (error) {
-      setNotice(error.message);
-    } else {
-      setUsers(data || []);
-    }
-  }
-
-  // Acceso con Google
-  async function signInGoogle() {
-    setAuthLoading(true);
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: window.location.origin
-      }
-    });
-
-    if (error) {
-      setNotice(error.message);
-      setAuthLoading(false);
-    }
-  }
-
-  // Acceso con correo y contraseña
-  async function signInEmail(e) {
-    e.preventDefault();
-
-    if (!authEmail.trim() || !authPassword) {
-      setNotice("Introduce tu correo y contraseña.");
-      return;
-    }
-
-    setAuthLoading(true);
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email: authEmail.trim(),
-      password: authPassword
-    });
-
-    setAuthLoading(false);
-
-    if (error) {
-      setNotice("No se pudo iniciar sesión: " + error.message);
-      return;
-    }
-
-    setAuthPassword("");
-  }
-
-  // Registro inicial: se mantiene exclusivamente con Google.
-  // La contraseña se establece posteriormente en el mismo usuario.
-
-  // Recuperar contraseña por correo
-  async function recoverPassword() {
-    const email = authEmail.trim();
-
-    if (!email) {
-      setNotice("Introduce el correo electrónico de tu cuenta.");
-      return;
-    }
-
-    setAuthLoading(true);
-
-    const { error } = await supabase.auth.resetPasswordForEmail(
-      email,
-      {
-        redirectTo: window.location.origin
-      }
-    );
-
-    setAuthLoading(false);
-
-    if (error) {
-      setNotice("No se pudo enviar el correo: " + error.message);
-      return;
-    }
-
-    setNotice(
-      "Si existe una cuenta con ese correo, recibirás un enlace para recuperar tu contraseña."
-    );
-  }
-
-  // Establecer o cambiar contraseña propia
-  async function updateOwnPassword(e) {
-    e?.preventDefault();
-
-    if (newPassword.length < 8) {
-      setNotice("La contraseña debe tener al menos 8 caracteres.");
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setNotice("Las contraseñas no coinciden.");
-      return;
-    }
-
-    setPasswordLoading(true);
-
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword
-    });
-
-    if (error) {
-      setPasswordLoading(false);
-      setNotice("No se pudo actualizar la contraseña: " + error.message);
-      return;
-    }
-
-    // Si la contraseña era temporal, se libera la cuenta
-    // solamente después de cambiarla correctamente.
-    if (mustChangePassword) {
-      const { error: rpcError } = await supabase.rpc(
-        "complete_password_change"
-      );
-
-      if (rpcError) {
-        setPasswordLoading(false);
-        setNotice(
-          "La contraseña cambió, pero no se pudo completar la autorización: " +
-          rpcError.message
-        );
-        return;
-      }
-    }
-
-    setNewPassword("");
-    setConfirmPassword("");
-    setRecoveryMode(false);
-    setPasswordLoading(false);
-
-    window.history.replaceState(
-      {},
-      document.title,
-      window.location.pathname
-    );
-
-    setNotice("Contraseña actualizada correctamente.");
-
-    await loadProfile();
-  }
-
-  // Cambio de correo: Supabase enviará la verificación
-  async function changeOwnEmail(e) {
-    e.preventDefault();
-
-    const email = newEmail.trim().toLowerCase();
-
-    if (!email || !email.includes("@")) {
-      setNotice("Introduce un correo electrónico válido.");
-      return;
-    }
-
-    setEmailLoading(true);
-
-    const { error } = await supabase.auth.updateUser({
-      email
-    });
-
-    setEmailLoading(false);
-
-    if (error) {
-      setNotice("No se pudo solicitar el cambio de correo: " + error.message);
-      return;
-    }
-
-    setNewEmail("");
-
-    setNotice(
-      "Solicitud enviada. Revisa el correo nuevo y completa la verificación de Supabase."
-    );
-  }
-
-  // Cargar foto desde el dispositivo
-  async function uploadProfilePhoto(e) {
-    const file = e.target.files?.[0];
-
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      setNotice("Selecciona un archivo de imagen válido.");
-      e.target.value = "";
-      return;
-    }
-
-    if (file.size > MAX_PHOTO_SIZE) {
-      setNotice("La fotografía no puede superar 3 MB.");
-      e.target.value = "";
-      return;
-    }
-
-    if (!session?.user?.id) {
-      setNotice("Debes iniciar sesión para cambiar tu foto.");
-      return;
-    }
-
-    setPhotoLoading(true);
-
-    const extension = (
-      file.name.split(".").pop() || "jpg"
-    ).toLowerCase().replace(/[^a-z0-9]/g, "");
-
-    const filePath = `${session.user.id}/avatar.${extension}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from(PHOTO_BUCKET)
-      .upload(filePath, file, {
-        upsert: true,
-        contentType: file.type,
-        cacheControl: "3600"
-      });
-
-    if (uploadError) {
-      setPhotoLoading(false);
-      setNotice(
-        "No se pudo cargar la foto. Comprueba la configuración del almacenamiento: " +
-        uploadError.message
-      );
-      e.target.value = "";
-      return;
-    }
-
-    const { data: publicData } = supabase.storage
-      .from(PHOTO_BUCKET)
-      .getPublicUrl(filePath);
-
-    const photoUrl =
-      `${publicData.publicUrl}?v=${Date.now()}`;
-
-    const { error: profileError } = await supabase.rpc(
-      "update_my_profile",
-      {
-        p_full_name: profileName.trim() || userName,
-        p_avatar_url: photoUrl
-      }
-    );
-
-    setPhotoLoading(false);
-    e.target.value = "";
-
-    if (profileError) {
-      setNotice(
-        "La foto se cargó, pero no se pudo guardar en el perfil: " +
-        profileError.message
-      );
-      return;
-    }
-
-    setProfile({
-      ...profile,
-      avatar_url: photoUrl,
-      full_name: profileName.trim() || userName
-    });
-
-    setNotice("Foto de perfil actualizada correctamente.");
-  }
-
-  // Guardar nombre y foto en el perfil
-  async function saveProfile() {
-    const name = profileName.trim();
-
-    if (!name) {
-      setNotice("El nombre no puede estar vacío.");
-      return;
-    }
-
-    setSavingProfile(true);
-
-    const { error } = await supabase.rpc(
-      "update_my_profile",
-      {
-        p_full_name: name,
-        p_avatar_url: profile?.avatar_url || ""
-      }
-    );
-
-    setSavingProfile(false);
-
-    if (error) {
-      setNotice("No se pudo guardar el perfil: " + error.message);
-      return;
-    }
-
-    setProfile({
-      ...profile,
-      full_name: name
-    });
-
-    setNotice("Perfil actualizado correctamente.");
-  }
-
-  function num(value) {
-    return value === "" || value === null
-      ? null
-      : Number(value);
-  }
-
-  async function save(e) {
-    e.preventDefault();
-
-    const online = Number(form.miners_online || 0);
-    const offline = Number(form.miners_offline || 0);
-
-    if (!form.work_shift) {
-      setNotice("Seleccione el turno de trabajo.");
-      return;
-    }
-
-    if (!form.report_date) {
-      setNotice("Seleccione la fecha operacional.");
-      return;
-    }
-
-    if (online + offline > TOTAL_MINERS) {
-      setNotice(
-        "Error: las mineradoras operativas y offline no pueden superar las 1280 unidades."
-      );
-      return;
-    }
-
-    if (online < 0 || offline < 0) {
-      setNotice("Los valores de mineradoras no pueden ser negativos.");
-      return;
-    }
-
-    if (
-      Number(form.generators_online) < 0 ||
-      Number(form.generators_online) > 3
-    ) {
-      setNotice("El número de generadores debe estar entre 0 y 3.");
-      return;
-    }
-
-    if (
-      form.rest_type !== "none" &&
-      !form.rest_person.trim()
-    ) {
-      setNotice("Informe o nome da pessoa.");
-      return;
-    }
-
-    const payload = {
-      report_date: form.report_date,
-      work_shift: form.work_shift,
-      created_by: session.user.id,
-      operators: form.operator_names,
-      day_off: form.rest_type === "none"
-        ? "No"
-        : `${form.rest_type}|${form.rest_person.trim()}`,
-      hashrate_ph: num(form.hashrate),
-      miners_online: num(form.miners_online),
-      miners_offline: num(form.miners_offline),
-      availability_pct: num(availability),
-      power_mw: num(form.power_mw),
-      month_consumption_kwh: num(form.monthly_kwh),
-      generators_running: num(form.generators_online),
-      occurrences: form.incidents,
-      maintenance: form.maintenance,
-      next_shift_pending: form.next_shift_pending,
-      supervisor_instructions: form.supervisor_guidance
-    };
-
-    let result;
-
-    if (editing) {
-      const reportToEdit = reports.find(r => r.id === editing);
-
-      if (
-        !reportToEdit ||
-        (!isAdmin && reportToEdit.created_by !== session.user.id)
-      ) {
-        setNotice("No tienes autorización para modificar este informe.");
-        return;
-      }
-
-      const { created_by, ...updatePayload } = payload;
-
-      let updateQuery = supabase
-        .from("daily_reports")
-        .update(updatePayload)
-        .eq("id", editing);
-
-      if (!isAdmin) {
-        updateQuery = updateQuery.eq(
-          "created_by",
-          session.user.id
-        );
-      }
-
-      result = await updateQuery.select().single();
-    } else {
-      result = await supabase
-        .from("daily_reports")
-        .insert(payload)
-        .select()
-        .single();
-    }
-
-    if (result.error) {
-      setNotice(result.error.message);
-    } else {
-      setNotice("Relatório salvo.");
-      setForm(createBlankForm());
-      setEditing(null);
-      await loadReports();
-    }
-  }
-
-  async function statusChange(id, status) {
-    const { error } = await supabase.rpc(
-      "set_operator_status",
-      {
-        target_user_id: id,
-        new_status: status
-      }
-    );
-
-    if (error) {
-      setNotice(error.message);
-    } else {
-      setNotice("Status atualizado.");
-      await loadUsers();
-    }
-  }
-
-  // Asignar contraseña temporal a un operador mediante la Edge Function.
-  // La función del servidor verifica que quien realiza la operación sea el admin.
-  async function assignTemporaryPassword(id) {
-    if (!isAdmin) {
-      setNotice("No tienes autorización para asignar contraseñas.");
-      return;
-    }
-
-    if (temporaryPassword.length < 12) {
-      setNotice("La contraseña temporal debe tener al menos 12 caracteres.");
-      return;
-    }
-
-    if (temporaryPassword.length > 128) {
-      setNotice("La contraseña no puede superar 128 caracteres.");
-      return;
-    }
-
-    const confirmed = window.confirm(
-      "¿Confirmas asignar esta contraseña temporal? El operador deberá crear una contraseña nueva antes de utilizar el sistema."
-    );
-
-    if (!confirmed) return;
-
-    setTemporaryPasswordLoading(true);
-
-    try {
-      const { data, error } = await supabase.functions.invoke(
-        "admin-manage-user",
-        {
-          body: {
-            action: "set_temp_password",
-            targetUserId: id,
-            temporaryPassword
-          }
-        }
-      );
-
-      if (error) {
-        setNotice(
-          "No se pudo asignar la contraseña temporal: " + error.message
-        );
-        return;
-      }
-
-      if (!data?.success) {
-        setNotice(
-          data?.message || "La función no pudo completar la operación."
-        );
-        return;
-      }
-
-      setTemporaryPassword("");
-      setTemporaryPasswordUser("");
-      setNotice(
-        data.message ||
-        "Contraseña temporal asignada correctamente."
-      );
-
-      await loadUsers();
-    } catch (error) {
-      setNotice(
-        "Error al comunicarse con la función administrativa: " +
-        (error?.message || "Error desconocido")
-      );
-    } finally {
-      setTemporaryPasswordLoading(false);
-    }
-  }
-
-  function edit(r) {
-    const canEdit =
-      isAdmin || r.created_by === session.user.id;
-
-    if (!canEdit) {
-      setNotice("No tienes autorización para modificar este informe.");
-      return;
-    }
-
-    setEditing(r.id);
-
-    const dayOff = r.day_off || "";
-    const oldType = dayOff.toLowerCase();
-
-    setForm({
-      report_date: r.report_date,
-      work_shift: r.work_shift || "",
-      operator_names: r.operators || "",
-      rest_type: dayOff.includes("|")
-        ? dayOff.split("|")[0]
-        : (
-          ["folga", "atestado", "banco de horas", "falta"].includes(oldType)
-            ? oldType
-            : (["sí", "sim"].includes(oldType) ? "folga" : "none")
-        ),
-      rest_person: dayOff.includes("|")
-        ? dayOff.split("|").slice(1).join("|")
-        : "",
-      hashrate: r.hashrate_ph ?? "",
-      miners_online: r.miners_online ?? "",
-      miners_offline: r.miners_offline ?? "",
-      availability: r.availability_pct ?? "",
-      power_mw: r.power_mw ?? "",
-      monthly_kwh: r.month_consumption_kwh ?? "",
-      generators_online: r.generators_running ?? "",
-      incidents: r.occurrences || "",
-      maintenance: r.maintenance || "",
-      next_shift_pending: r.next_shift_pending || "",
-      supervisor_guidance: r.supervisor_instructions || ""
-    });
-
-    setActiveSection("home");
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth"
-    });
-  }
-
-  async function deleteReport(r) {
-    const canDelete =
-      isAdmin || r.created_by === session.user.id;
-
-    if (!canDelete) {
-      setNotice("No tienes autorización para eliminar este informe.");
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `¿Deseas eliminar el informe del ${r.report_date}, turno ${r.work_shift || "-"}? Esta acción no se puede deshacer.`
-    );
-
-    if (!confirmed) return;
-
-    let deleteQuery = supabase
-      .from("daily_reports")
-      .delete()
-      .eq("id", r.id);
-
-    if (!isAdmin) {
-      deleteQuery = deleteQuery.eq(
-        "created_by",
-        session.user.id
-      );
-    }
-
-    const { data, error } = await deleteQuery.select("id");
-
-    if (error) {
-      setNotice("No se pudo eliminar el informe: " + error.message);
-      return;
-    }
-
-    if (!data || data.length === 0) {
-      setNotice(
-        "No se eliminó el informe. Verifica tus permisos o vuelve a iniciar sesión."
-      );
-      return;
-    }
-
-    setNotice("Informe eliminado correctamente.");
-
-    if (editing === r.id) {
-      setEditing(null);
-      setForm(createBlankForm());
-    }
-
-    await loadReports();
-  }
-
-  function restText(value) {
-    if (!value || value === "No") return "Sin descanso";
-
-    if (value.includes("|")) {
-      const parts = value.split("|");
-      return `${parts[0]} — ${parts.slice(1).join("|")}`;
-    }
-
-    return value;
-  }
-
-  function reportCell(label, value) {
-    return (
-      <div style={reportStyles.cell}>
-        <span style={reportStyles.cellLabel}>{label}</span>
-        <span style={reportStyles.cellValue}>
-          {value === null || value === undefined || value === ""
-            ? "-"
-            : String(value)}
-        </span>
-      </div>
-    );
-  }
-
-  function renderReport(r) {
-    const metrics = [
-      ["TURNO DE TRABAJO", r.work_shift ? `TURNO ${r.work_shift}` : "-"],
-      ["OPERADORES", r.operators],
-      ["DESCANSO", restText(r.day_off)],
-      ["HASHRATE (PH/s)", r.hashrate_ph],
-      ["DISPONIBILIDAD (%)", r.availability_pct],
-      ["MINERADORAS ONLINE", r.miners_online],
-      ["MINERADORAS OFFLINE", r.miners_offline],
-      ["CONSUMO (MW)", r.power_mw],
-      ["CONSUMO MENSUAL (kWh)", r.month_consumption_kwh],
-      ["GENERADORES EN OPERACIÓN", `${r.generators_running ?? "-"}/3`]
-    ];
-
-    const details = [
-      ["INCIDENCIAS", r.occurrences],
-      ["MANTENIMIENTOS REALIZADOS", r.maintenance],
-      ["PENDIENTES DEL PRÓXIMO TURNO", r.next_shift_pending],
-      ["ORIENTACIONES DE SUPERVISIÓN", r.supervisor_instructions]
-    ];
-
-    return (
-      <div
-        id={`report-${r.id}`}
-        key={r.id}
-        style={reportStyles.container}
-      >
-        <div style={reportStyles.header}>
-          <img
-            src={LOGO}
-            alt="ADECOAGRO"
-            style={reportStyles.logo}
-            crossOrigin="anonymous"
-          />
-
-          <div>
-            <h2 style={reportStyles.brand}>
-              ADECOAGRO MINING CLOUD
-            </h2>
-            <p style={reportStyles.subtitle}>
-              INFORME DIARIO OPERACIONAL
-            </p>
-            <p style={{
-              color: "#344d3e",
-              fontSize: "12px",
-              fontWeight: "bold",
-              margin: "8px 0 0"
-            }}>
-              FECHA: {r.report_date || "-"}
-            </p>
-          </div>
-        </div>
-
-        <div style={reportStyles.sectionTitle}>
-          INFORMACIÓN OPERACIONAL
-        </div>
-
-        <div style={reportStyles.grid}>
-          {metrics.map(([label, value]) => (
-            <React.Fragment key={label}>
-              {reportCell(label, value)}
-            </React.Fragment>
-          ))}
-        </div>
-
-        <div style={reportStyles.sectionTitle}>
-          DETALLES DEL TURNO
-        </div>
-
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "1fr",
-          gap: "9px"
-        }}>
-          {details.map(([label, value]) => (
-            <React.Fragment key={label}>
-              {reportCell(label, value)}
-            </React.Fragment>
-          ))}
-        </div>
-
-        <div style={reportStyles.footer}>
-          ADECOAGRO · ENERGIA EM CRESCIMENTO
-        </div>
-      </div>
-    );
-  }
-
-  async function generateQR(r) {
-    try {
-      const url =
-        `${window.location.origin}/?report=${encodeURIComponent(r.id)}`;
-
-      const image = await QRCode.toDataURL(url, {
-        width: 300,
-        margin: 2,
-        errorCorrectionLevel: "H"
-      });
-
-      setQrImage(image);
-      setQrReport(r);
-    } catch (error) {
-      setNotice("Error al generar el código QR: " + error.message);
-    }
-  }
-
-  function shareWhatsApp(r) {
-    const url =
-      `${window.location.origin}/?report=${encodeURIComponent(r.id)}`;
-
-    window.open(
-      `https://wa.me/?text=${encodeURIComponent(
-        "ADECOAGRO MINING CLOUD - Informe operacional: " + url
-      )}`,
-      "_blank"
-    );
-  }
-
-  async function exportPdf(r) {
-    try {
-      const doc = new jsPDF("p", "mm", "a4");
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 14;
-      const gap = 6;
-      const cardWidth = (pageWidth - margin * 2 - gap) / 2;
-      const fullWidth = pageWidth - margin * 2;
-
-      let y = 48;
-
-      async function getLogo() {
-        return new Promise(resolve => {
-          const image = new Image();
-          image.crossOrigin = "anonymous";
-
-          image.onload = () => {
-            try {
-              const canvas = document.createElement("canvas");
-              canvas.width = image.naturalWidth;
-              canvas.height = image.naturalHeight;
-
-              const context = canvas.getContext("2d");
-              context.drawImage(image, 0, 0);
-
-              resolve(canvas.toDataURL("image/png"));
-            } catch {
-              resolve(null);
-            }
-          };
-
-          image.onerror = () => resolve(null);
-          image.src = LOGO;
-        });
-      }
-
-      const logoData = await getLogo();
-
-      function header() {
-        doc.setFillColor(22, 77, 53);
-        doc.rect(0, 0, pageWidth, 36, "F");
-
-        if (logoData) {
-          doc.addImage(logoData, "PNG", margin, 5, 25, 25);
-        }
-
-        doc.setTextColor(255, 255, 255);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(15);
-        doc.text("ADECOAGRO MINING CLOUD", logoData ? 44 : margin, 15);
-
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        doc.text("INFORME DIARIO OPERACIONAL", logoData ? 44 : margin, 23);
-
-        doc.setTextColor(35, 65, 49);
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "bold");
-        doc.text(`FECHA: ${r.report_date || "-"}`, margin, 44);
-        doc.text(`TURNO: ${r.work_shift || "-"}`, margin + 75, 44);
-      }
-
-      function newPage() {
-        doc.addPage();
-        header();
-        y = 51;
-      }
-
-      function drawSection(title) {
-        if (y + 11 > pageHeight - 15) newPage();
-
-        doc.setFillColor(22, 77, 53);
-        doc.roundedRect(margin, y, fullWidth, 8, 1.5, 1.5, "F");
-
-        doc.setTextColor(255, 255, 255);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(9);
-        doc.text(title, margin + 4, y + 5.5);
-
-        y += 12;
-      }
-
-      function drawCard(label, value, x, width) {
-        const text = String(value ?? "-").trim() || "-";
-        const lines = doc.splitTextToSize(text, width - 8);
-        const height = Math.max(19, 13 + lines.length * 4.5);
-
-        if (y + height > pageHeight - 15) {
-          newPage();
-        }
-
-        doc.setFillColor(251, 253, 251);
-        doc.setDrawColor(185, 203, 189);
-        doc.roundedRect(x, y, width, height, 2, 2, "FD");
-
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(7.5);
-        doc.setTextColor(38, 112, 75);
-        doc.text(label, x + 4, y + 6);
-
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        doc.setTextColor(24, 41, 35);
-        doc.text(lines, x + 4, y + 12);
-
-        return height;
-      }
-
-      header();
-      drawSection("INFORMACIÓN OPERACIONAL");
-
-      const metrics = [
-        ["TURNO DE TRABAJO", r.work_shift ? `TURNO ${r.work_shift}` : "-"],
-        ["OPERADORES", r.operators],
-        ["DESCANSO", restText(r.day_off)],
-        ["HASHRATE (PH/s)", r.hashrate_ph],
-        ["DISPONIBILIDAD (%)", r.availability_pct],
-        ["MINERADORAS ONLINE", r.miners_online],
-        ["MINERADORAS OFFLINE", r.miners_offline],
-        ["CONSUMO (MW)", r.power_mw],
-        ["CONSUMO MENSUAL (kWh)", r.month_consumption_kwh],
-        ["GENERADORES EN OPERACIÓN", `${r.generators_running ?? "-"}/3`]
-      ];
-
-      for (let i = 0; i < metrics.length; i += 2) {
-        const leftHeight = drawCard(
-          metrics[i][0],
-          metrics[i][1],
-          margin,
-          cardWidth
-        );
-
-        const rightHeight = metrics[i + 1]
-          ? drawCard(
-              metrics[i + 1][0],
-              metrics[i + 1][1],
-              margin + cardWidth + gap,
-              cardWidth
-            )
-          : 0;
-
-        y += Math.max(leftHeight, rightHeight) + 5;
-      }
-
-      drawSection("DETALLES DEL TURNO");
-
-      const details = [
-        ["INCIDENCIAS", r.occurrences],
-        ["MANTENIMIENTOS REALIZADOS", r.maintenance],
-        ["PENDIENTES DEL PRÓXIMO TURNO", r.next_shift_pending],
-        ["ORIENTACIONES DE SUPERVISIÓN", r.supervisor_instructions]
-      ];
-
-      details.forEach(([label, value]) => {
-        const height = drawCard(label, value, margin, fullWidth);
-        y += height + 5;
-      });
-
-      const pages = doc.internal.getNumberOfPages();
-
-      for (let page = 1; page <= pages; page++) {
-        doc.setPage(page);
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(8);
-        doc.setTextColor(110, 125, 115);
-        doc.text(
-          `ADECOAGRO · Energia em crescimento · ${page}/${pages}`,
-          pageWidth / 2,
-          pageHeight - 7,
-          { align: "center" }
-        );
-      }
-
-      doc.save(
-        `adecoagro-${r.report_date}-turno-${r.work_shift || "sin-turno"}.pdf`
-      );
-    } catch (error) {
-      setNotice("No se pudo generar el PDF: " + error.message);
-    }
-  }
-
-  async function exportJpg(r) {
-    try {
-      const node = document.getElementById(`report-${r.id}`);
-
-      if (!node) {
-        setNotice("No se encontró el informe para exportar.");
-        return;
-      }
-
-      const data = await toJpeg(node, {
-        quality: 0.95,
-        backgroundColor: "#ffffff",
-        pixelRatio: 2,
-        cacheBust: true
-      });
-
-      const a = document.createElement("a");
-      a.href = data;
-      a.download =
-        `adecoagro-${r.report_date}-turno-${r.work_shift || "sin-turno"}.jpg`;
-      a.click();
-    } catch (error) {
-      setNotice("No se pudo generar el JPG: " + error.message);
-    }
-  }
-
-  function label(k) {
-    return ({
-      report_date: t.date,
-      work_shift: t.shift,
-      operator_names: t.operator,
-      rest_type: t.rest,
-      rest_person:
-        lang === "pt-BR"
-          ? "Nome da pessoa"
-          : lang === "es-419"
-            ? "Nombre de la persona"
-            : "Person's name",
-      hashrate: t.hash,
-      miners_online: t.online,
-      miners_offline: t.offline,
-      availability: t.availability,
-      power_mw: t.power,
-      monthly_kwh: t.month,
-      generators_online: t.generators,
-      incidents: t.events,
-      maintenance: t.maintenance,
-      next_shift_pending: t.pending,
-      supervisor_guidance: t.guidance
-    })[k];
-  }
-
-  async function signOut() {
-    await supabase.auth.signOut();
-    setRecoveryMode(false);
-    setActiveSection("home");
-  }
-
-  if (!configured) {
-    return (
-      <main className="center">
-        <section className="panel">
-          <h1>ADECOAGRO MINING CLOUD</h1>
-          <p>
-            O código está pronto para configurar, mas ainda faltam as
-            credenciais do projeto Supabase.
-          </p>
-          <p>
-            Crie um arquivo <code>.env</code> com base em{" "}
-            <code>.env.example</code>, preenchendo a URL e a chave
-            publicável do Supabase. Nunca coloque a chave service_role
-            no navegador.
-          </p>
-        </section>
-      </main>
-    );
-  }
-
-  // Pantalla de recuperación o establecimiento de contraseña
-  if (recoveryMode) {
-    return (
-      <main className="app-layout unauthenticated">
-        <header>
-          <div className="brand-area">
-            <img src={LOGO} alt="ADECO ENERGIA" className="adeco-logo" />
-            <div>
-              <div className="brand">
-                ADECOAGRO <span>MINING CLOUD</span>
-              </div>
-              <small>Energia em crescimento</small>
-            </div>
-          </div>
-        </header>
-
-        <section className="panel login">
-          <h2>Crear nueva contraseña</h2>
-          <p>
-            Introduce una contraseña nueva para tu cuenta.
-          </p>
-
-          <form onSubmit={updateOwnPassword}>
-            <label>
-              Nueva contraseña
-              <input
-                type="password"
-                autoComplete="new-password"
-                value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
-                minLength={8}
-                required
-              />
-            </label>
-
-            <label>
-              Confirmar contraseña
-              <input
-                type="password"
-                autoComplete="new-password"
-                value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
-                minLength={8}
-                required
-              />
-            </label>
-
-            <button type="submit" disabled={passwordLoading}>
-              {passwordLoading ? "Actualizando..." : "Guardar contraseña"}
-            </button>
-          </form>
-
-          {notice && <p>{notice}</p>}
-        </section>
-      </main>
-    );
-  }
-
-  return (
-    <main className={`app-layout ${session ? "authenticated" : "unauthenticated"}`}>
-      <header>
-        <div className="brand-area">
-          <img
-            src={LOGO}
-            alt="ADECO ENERGIA"
-            className="adeco-logo"
-          />
-
-          <div>
-            <div className="brand">
-              ADECOAGRO <span>MINING CLOUD</span>
-            </div>
-            <small>Energia em crescimento</small>
-          </div>
-        </div>
-
-        <div className="tools">
-          <select
-            value={lang}
-            onChange={e => {
-              setLang(e.target.value);
-              localStorage.setItem("amc-lang", e.target.value);
-            }}
-          >
-            <option value="pt-BR">Português</option>
-            <option value="es-419">Español</option>
-            <option value="en-US">English</option>
-          </select>
-        </div>
-      </header>
-
-      {!session ? (
-        <section className="panel login">
-          <h1>ADECOAGRO MINING CLOUD</h1>
-          <p>Plataforma de relatórios operacionais</p>
-
-          <button onClick={signInGoogle} disabled={authLoading}>
-            {authLoading ? "Aguarde..." : t.login}
-          </button>
-
-          <div className="auth-divider">
-            <span>O</span>
-          </div>
-
-          <form onSubmit={signInEmail}>
-            <label>
-              Correo electrónico
-              <input
-                type="email"
-                autoComplete="username"
-                value={authEmail}
-                onChange={e => setAuthEmail(e.target.value)}
-                placeholder="tu correo electrónico"
-                required
-              />
-            </label>
-
-            <label>
-              Contraseña
-              <div className="password-input">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
-                  value={authPassword}
-                  onChange={e => setAuthPassword(e.target.value)}
-                  placeholder="Tu contraseña"
-                  required
-                />
-
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? "Ocultar" : "Mostrar"}
-                </button>
-              </div>
-            </label>
-
-            <button type="submit" disabled={authLoading}>
-              {authLoading ? "Entrando..." : "Entrar con correo y contraseña"}
-            </button>
-          </form>
-
-          <button
-            type="button"
-            className="secondary"
-            onClick={recoverPassword}
-            disabled={authLoading}
-          >
-            ¿Olvidaste tu contraseña?
-          </button>
-
-          <p className="auth-note">
-            El registro inicial de usuarios se realiza mediante Google.
-            Después de acceder, podrás establecer una contraseña desde Mi perfil.
-          </p>
-        </section>
-      ) : !profile ? (
-        <section className="panel">
-          <p>Carregando perfil...</p>
-        </section>
-      ) : profile.status !== "approved" && !isAdmin ? (
-        <section className="panel">
-          <h2>
-            {profile.status === "blocked" ? t.blocked : t.pendingStatus}
-          </h2>
-          <p>
-            {profile.status === "blocked"
-              ? "Entre em contato com o administrador."
-              : t.waiting}
-          </p>
-
-          <button className="secondary" onClick={signOut}>
-            {t.logout}
-          </button>
-        </section>
-      ) : mustChangePassword ? (
-        <section className="panel login">
-          <h2>Actualización obligatoria de contraseña</h2>
-          <p>
-            El administrador asignó una contraseña temporal a tu cuenta.
-            Para continuar, debes crear una contraseña personal nueva.
-          </p>
-
-          <form onSubmit={updateOwnPassword}>
-            <label>
-              Nueva contraseña
-              <input
-                type="password"
-                autoComplete="new-password"
-                value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
-                minLength={8}
-                required
-              />
-            </label>
-
-            <label>
-              Confirmar contraseña
-              <input
-                type="password"
-                autoComplete="new-password"
-                value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
-                minLength={8}
-                required
-              />
-            </label>
-
-            <button type="submit" disabled={passwordLoading}>
-              {passwordLoading ? "Actualizando..." : "Cambiar contraseña y continuar"}
-            </button>
-          </form>
-
-          <button className="secondary" onClick={signOut}>
-            Salir
-          </button>
-        </section>
-      ) : (
-        <>
-          <aside className="sidebar">
-            <div className="sidebar-user">
-              {profilePhoto ? (
-                <img
-                  src={profilePhoto}
-                  alt="Foto de perfil"
-                  className="user-avatar"
-                />
-              ) : (
-                <div className="user-avatar">👤</div>
-              )}
-
-              <strong>{userName}</strong>
-              <small>{session?.user?.email}</small>
-            </div>
-
-            <nav className="sidebar-menu">
-              <button
-                className={activeSection === "home" ? "menu-active" : "menu-button"}
-                onClick={() => setActiveSection("home")}
-              >
-                🏠 Inicio
-              </button>
-
-              <button
-                className={activeSection === "history" ? "menu-active" : "menu-button"}
-                onClick={() => setActiveSection("history")}
-              >
-                📁 Histórico general
-              </button>
-
-              {isAdmin && (
-                <button
-                  className={activeSection === "users" ? "menu-active" : "menu-button"}
-                  onClick={() => setActiveSection("users")}
-                >
-                  👥 Administración de usuarios
-                </button>
-              )}
-
-              <button
-                className={activeSection === "profile" ? "menu-active" : "menu-button"}
-                onClick={() => setActiveSection("profile")}
-              >
-                👤 Mi perfil
-              </button>
-
-              <button className="menu-button" onClick={signOut}>
-                🚪 {t.logout}
-              </button>
-            </nav>
-          </aside>
-
-          {activeSection === "home" && (
-            <section className="panel">
-              <h2>{t.title}</h2>
-
-              <form onSubmit={save} lang={lang} spellCheck={true}>
-                <div className="fields">
-                  {fields.map(k => (
-                    <label
-                      key={k}
-                      className={[
-                        "incidents",
-                        "maintenance",
-                        "next_shift_pending",
-                        "supervisor_guidance"
-                      ].includes(k) ? "wide" : ""}
-                    >
-                      {label(k)}
-
-                      {k === "work_shift" ? (
-                        <select
-                          value={form.work_shift}
-                          onChange={e => setForm({
-                            ...form,
-                            work_shift: e.target.value
-                          })}
-                          required
-                        >
-                          <option value="">Seleccionar turno</option>
-                          <option value="A">Turno A — 07:00 a 15:20</option>
-                          <option value="B">Turno B — 15:20 a 23:20</option>
-                          <option value="C">Turno C — 23:20 a 07:00</option>
-                        </select>
-                      ) : k === "rest_type" ? (
-                        <select
-                          value={form.rest_type}
-                          onChange={e => setForm({
-                            ...form,
-                            rest_type: e.target.value
-                          })}
-                        >
-                          <option value="none">
-                            {lang === "pt-BR"
-                              ? "Sem descanso"
-                              : lang === "es-419"
-                                ? "Sin descanso"
-                                : "No absence"}
-                          </option>
-                          <option value="folga">
-                            {lang === "pt-BR" ? "Folga" : lang === "es-419" ? "Descanso" : "Day off"}
-                          </option>
-                          <option value="atestado">
-                            {lang === "pt-BR" ? "Atestado" : lang === "es-419" ? "Certificado médico" : "Medical leave"}
-                          </option>
-                          <option value="banco de horas">Banco de horas</option>
-                          <option value="falta">
-                            {lang === "pt-BR" ? "Falta" : lang === "es-419" ? "Ausencia" : "Absence"}
-                          </option>
-                        </select>
-                      ) : k === "rest_person" ? (
-                        <input
-                          type="text"
-                          lang={lang}
-                          spellCheck={true}
-                          value={form.rest_person}
-                          onChange={e => setForm({
-                            ...form,
-                            rest_person: e.target.value
-                          })}
-                          placeholder={
-                            lang === "pt-BR"
-                              ? "Nome da pessoa"
-                              : lang === "es-419"
-                                ? "Nombre de la persona"
-                                : "Person's name"
-                          }
-                          required={form.rest_type !== "none"}
-                        />
-                      ) : [
-                        "incidents",
-                        "maintenance",
-                        "next_shift_pending",
-                        "supervisor_guidance"
-                      ].includes(k) ? (
-                        <textarea
-                          rows="3"
-                          lang={lang}
-                          spellCheck={true}
-                          value={form[k]}
-                          onChange={e => setForm({
-                            ...form,
-                            [k]: e.target.value
-                          })}
-                        />
-                      ) : k === "availability" ? (
-                        <input
-                          type="number"
-                          value={availability}
-                          readOnly
-                          placeholder="0.00"
-                        />
-                      ) : k === "generators_online" ? (
-                        <select
-                          value={form.generators_online}
-                          onChange={e => setForm({
-                            ...form,
-                            generators_online: e.target.value
-                          })}
-                          required
-                        >
-                          <option value="">Seleccionar</option>
-                          <option value="0">0/3</option>
-                          <option value="1">1/3</option>
-                          <option value="2">2/3</option>
-                          <option value="3">3/3</option>
-                        </select>
-                      ) : (
-                        <input
-                          required={
-                            k === "report_date" ||
-                            k === "operator_names"
-                          }
-                          type={
-                            k === "report_date"
-                              ? "date"
-                              : k === "operator_names"
-                                ? "text"
-                                : "number"
-                          }
-                          min={
-                            ["miners_online", "miners_offline"].includes(k)
-                              ? 0
-                              : undefined
-                          }
-                          max={
-                            ["miners_online", "miners_offline"].includes(k)
-                              ? TOTAL_MINERS
-                              : undefined
-                          }
-                          step={
-                            ["miners_online", "miners_offline"].includes(k)
-                              ? 1
-                              : "any"
-                          }
-                          value={form[k]}
-                          onChange={e => setForm({
-                            ...form,
-                            [k]: e.target.value
-                          })}
-                        />
-                      )}
-                    </label>
-                  ))}
-                </div>
-
-                <button type="submit">{t.save}</button>
-
-                {editing && (
-                  <button
-                    type="button"
-                    className="secondary"
-                    onClick={() => {
-                      setEditing(null);
-                      setForm(createBlankForm());
-                    }}
-                  >
-                    Cancelar edición
-                  </button>
-                )}
-              </form>
-            </section>
-          )}
-
-          {activeSection === "history" && (
-            <section className="panel">
-              <h2>{t.history}</h2>
-
-              {reports.length === 0 ? (
-                <p>{t.noReports}</p>
-              ) : (
-                reports.map(r => {
-                  const canManage =
-                    isAdmin || r.created_by === session.user.id;
-
-                  return (
-                    <article className="report" key={r.id}>
-                      <div className="reporthead">
-                        <h3>
-                          {r.report_date} · {r.work_shift ? `Turno ${r.work_shift} · ` : ""}
-                          {r.operators}
-                        </h3>
-
-                        <div className="report-actions">
-                          <button
-                            className="secondary"
-                            onClick={() => exportPdf(r)}
-                          >
-                            PDF
-                          </button>
-
-                          <button
-                            className="secondary"
-                            onClick={() => exportJpg(r)}
-                          >
-                            JPG
-                          </button>
-
-                          <button
-                            className="secondary"
-                            onClick={() => generateQR(r)}
-                          >
-                            QR
-                          </button>
-
-                          <button
-                            className="secondary"
-                            onClick={() => shareWhatsApp(r)}
-                          >
-                            WhatsApp
-                          </button>
-
-                          {canManage && (
-                            <>
-                              <button
-                                className="secondary"
-                                onClick={() => edit(r)}
-                              >
-                                Editar
-                              </button>
-
-                              <button
-                                className="danger"
-                                onClick={() => deleteReport(r)}
-                              >
-                                Eliminar
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-
-                      {renderReport(r)}
-                    </article>
-                  );
-                })
-              )}
-            </section>
-          )}
-
-          {activeSection === "users" && isAdmin && (
-            <section className="panel">
-              <h2>{t.admin}</h2>
-
-              <p>
-                Administrador principal: {ADMIN}. Limite planejado:
-                1 administrador + 9 operadores.
-              </p>
-
-              {users.map(u => (
-                <div className="userrow" key={u.id}>
-                  <div className="userrow-main">
-                    <b>{u.full_name || u.email}</b>
-                    <small>
-                      {u.email} · {u.status} · {u.role}
-                      {u.must_change_password
-                        ? " · Cambio de contraseña pendiente"
-                        : ""}
-                    </small>
-                  </div>
-
-                  <div className="userrow-actions">
-                    {u.role !== "admin" && (
-                      <>
-                        <button onClick={() => statusChange(u.id, "approved")}>
-                          Aprobar
-                        </button>
-
-                        <button
-                          className="danger"
-                          onClick={() => statusChange(u.id, "blocked")}
-                        >
-                          Bloquear
-                        </button>
-
-                        <button
-                          type="button"
-                          className="secondary"
-                          onClick={() => {
-                            setTemporaryPasswordUser(
-                              temporaryPasswordUser === u.id ? "" : u.id
-                            );
-                            setTemporaryPassword("");
-                          }}
-                        >
-                          Asignar contraseña temporal
-                        </button>
-
-                        {temporaryPasswordUser === u.id && (
-                          <div className="temporary-password-form">
-                            <label>
-                              Contraseña temporal (mínimo 12 caracteres)
-                              <input
-                                type="password"
-                                autoComplete="new-password"
-                                minLength={12}
-                                maxLength={128}
-                                value={temporaryPassword}
-                                onChange={e => setTemporaryPassword(e.target.value)}
-                                placeholder="Escribe una contraseña temporal"
-                              />
-                            </label>
-
-                            <button
-                              type="button"
-                              onClick={() => assignTemporaryPassword(u.id)}
-                              disabled={
-                                temporaryPasswordLoading ||
-                                temporaryPassword.length < 12
-                              }
-                            >
-                              {temporaryPasswordLoading
-                                ? "Asignando..."
-                                : "Confirmar contraseña temporal"}
-                            </button>
-
-                            <button
-                              type="button"
-                              className="secondary"
-                              onClick={() => {
-                                setTemporaryPasswordUser("");
-                                setTemporaryPassword("");
-                              }}
-                              disabled={temporaryPasswordLoading}
-                            >
-                              Cancelar
-                            </button>
-
-                            <small>
-                              El operador tendrá que crear su propia contraseña
-                              antes de volver a utilizar el sistema.
-                            </small>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </section>
-          )}
-
-          {activeSection === "profile" && (
-            <section className="panel">
-              <h2>Mi perfil</h2>
-
-              <div className="profile-card">
-                {profilePhoto ? (
-                  <img
-                    src={profilePhoto}
-                    alt="Foto de perfil"
-                    className="profile-photo"
-                  />
-                ) : (
-                  <div className="profile-photo-placeholder">👤</div>
-                )}
-
-                <label>
-                  Cambiar fotografía
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={uploadProfilePhoto}
-                    disabled={photoLoading}
-                  />
-                </label>
-
-                {photoLoading && <p>Subiendo fotografía...</p>}
-
-                <label>
-                  Nombre del perfil
-                  <input
-                    type="text"
-                    value={profileName}
-                    onChange={e => setProfileName(e.target.value)}
-                    placeholder="Escribe tu nombre"
-                  />
-                </label>
-
-                <label>
-                  Correo electrónico actual
-                  <input
-                    type="email"
-                    value={session?.user?.email || ""}
-                    readOnly
-                  />
-                </label>
-
-                <button
-                  onClick={saveProfile}
-                  disabled={savingProfile}
-                >
-                  {savingProfile ? "Guardando..." : "Guardar cambios"}
-                </button>
-
-                <hr />
-
-                <h3>Cambiar correo electrónico</h3>
-                <p>
-                  Supabase enviará un enlace para verificar el nuevo correo.
-                </p>
-
-                <form onSubmit={changeOwnEmail}>
-                  <label>
-                    Nuevo correo electrónico
-                    <input
-                      type="email"
-                      value={newEmail}
-                      onChange={e => setNewEmail(e.target.value)}
-                      placeholder="nuevo@correo.com"
-                      required
-                    />
-                  </label>
-
-                  <button type="submit" disabled={emailLoading}>
-                    {emailLoading ? "Enviando..." : "Solicitar cambio de correo"}
-                  </button>
-                </form>
-
-                <hr />
-
-                <h3>Contraseña</h3>
-                <p>
-                  Establece una contraseña para poder entrar con correo
-                  electrónico además de Google, o cambia tu contraseña actual.
-                </p>
-
-                <form onSubmit={updateOwnPassword}>
-                  <label>
-                    Nueva contraseña
-                    <input
-                      type="password"
-                      autoComplete="new-password"
-                      value={newPassword}
-                      onChange={e => setNewPassword(e.target.value)}
-                      minLength={8}
-                      placeholder="Mínimo 8 caracteres"
-                      required
-                    />
-                  </label>
-
-                  <label>
-                    Confirmar nueva contraseña
-                    <input
-                      type="password"
-                      autoComplete="new-password"
-                      value={confirmPassword}
-                      onChange={e => setConfirmPassword(e.target.value)}
-                      minLength={8}
-                      placeholder="Repite la contraseña"
-                      required
-                    />
-                  </label>
-
-                  <button type="submit" disabled={passwordLoading}>
-                    {passwordLoading ? "Actualizando..." : "Actualizar contraseña"}
-                  </button>
-                </form>
-
-                <hr />
-
-                <h3>Información de la cuenta</h3>
-
-                <label>
-                  Último acceso
-                  <input
-                    type="text"
-                    value={
-                      session?.user?.last_sign_in_at
-                        ? new Date(session.user.last_sign_in_at).toLocaleString()
-                        : "No disponible"
-                    }
-                    readOnly
-                  />
-                </label>
-
-                <label>
-                  Tipo de cuenta
-                  <input
-                    type="text"
-                    value={profile?.role || "operator"}
-                    readOnly
-                  />
-                </label>
-
-                <label>
-                  Estado de la cuenta
-                  <input
-                    type="text"
-                    value={profile?.status || ""}
-                    readOnly
-                  />
-                </label>
-              </div>
-            </section>
-          )}
-        </>
-      )}
-
-      {qrReport && qrImage && (
-        <div className="qr-overlay">
-          <section className="panel qr-modal">
-            <h2>Compartir informe</h2>
-
-            <p>
-              {qrReport.report_date} ·
-              {qrReport.work_shift ? ` Turno ${qrReport.work_shift} ·` : ""}
-              {" "}{qrReport.operators}
-            </p>
-
-            <img src={qrImage} alt="Código QR del informe" />
-
-            <p>Escanea para abrir este informe.</p>
-
-            <button onClick={() => shareWhatsApp(qrReport)}>
-              Compartir por WhatsApp
-            </button>
-
-            <button
-              className="secondary"
-              onClick={() => {
-                setQrReport(null);
-                setQrImage("");
-              }}
-            >
-              Cerrar
-            </button>
-          </section>
-        </div>
-      )}
-
-      {notice && (
-        <div
-          className="notice"
-          onClick={() => setNotice("")}
-        >
-          {notice} ×
-        </div>
-      )}
-
-      <footer>
-        ADECOAGRO · Energia em crescimento
-      </footer>
-    </main>
-  );
-}
