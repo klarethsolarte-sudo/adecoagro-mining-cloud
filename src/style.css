@@ -761,3 +761,148 @@ footer {
     padding: 16px;
   }
 }
+
+/* PAINEL DE INDICADORES OPERACIONAIS */
+.dashboard-section {
+  margin: 0 0 26px;
+  padding: 18px;
+  border: 1px solid #dce7df;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #f8fbf8, #eef5f0);
+}
+.dashboard-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 14px;
+}
+.dashboard-heading h3 {
+  margin: 0;
+  color: #173e30;
+  font-size: 17px;
+}
+.dashboard-heading span,
+.dashboard-empty {
+  color: #61746a;
+  font-size: 13px;
+}
+.dashboard-empty { margin: 0; }
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.metric-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  min-height: 96px;
+  padding: 15px;
+  border: 1px solid #dce7df;
+  border-radius: 11px;
+  background: #fff;
+  box-shadow: 0 3px 12px #102a2408;
+}
+.metric-card span {
+  color: #61746a;
+  font-size: 12px;
+  font-weight: 650;
+}
+.metric-card strong {
+  color: #176849;
+  font-size: clamp(20px, 2.4vw, 27px);
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+/* FILTROS DEL HISTORIAL */
+.history-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+  margin: 8px 0 12px;
+  padding: 15px;
+  background: #f5f8f5;
+  border: 1px solid #dce7df;
+  border-radius: 12px;
+}
+.history-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  color: #345344;
+  font-size: 13px;
+  font-weight: 650;
+}
+.history-filters .filter-clear {
+  min-height: 43px;
+  white-space: nowrap;
+}
+.history-count {
+  margin: 8px 0 14px;
+  color: #61746a;
+  font-size: 13px;
+}
+
+/* AVATAR MAIS COMPACTO */
+.sidebar .user-avatar {
+  display: block;
+  width: 58px;
+  height: 58px;
+  margin: 0 0 5px;
+  border: 2px solid #c3d8a5;
+  border-radius: 50%;
+  object-fit: cover;
+  font-size: 28px;
+}
+.profile-photo,
+.profile-photo-placeholder {
+  width: 88px;
+  height: 88px;
+}
+.profile-photo-placeholder {
+  font-size: 40px;
+}
+
+/* MELHORIAS RESPONSIVAS */
+@media (max-width: 900px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .history-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .history-filters .filter-clear {
+    width: 100%;
+  }
+}
+@media (max-width: 600px) {
+  .dashboard-section {
+    padding: 13px;
+  }
+  .dashboard-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .metric-card {
+    min-height: 82px;
+    padding: 11px;
+  }
+  .metric-card span {
+    font-size: 11px;
+  }
+  .history-filters {
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+  .history-filters .filter-clear {
+    width: 100%;
+  }
+}
