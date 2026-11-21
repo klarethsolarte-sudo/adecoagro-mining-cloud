@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { toJpeg } from "html-to-image";
 import jsPDF from "jspdf";
@@ -154,6 +153,7 @@ const translations = {
     "enterAccountEmail": "Informe o e-mail da sua conta.",
     "invalidEmail": "E-mail inválido.",
     "passwordMin": "A senha deve ter pelo menos 8 caracteres.",
+    "passwordMaxBytes": "A senha não pode ultrapassar 72 bytes.",
     "passwordMismatch": "As senhas não coincidem.",
     "passwordUpdated": "Senha atualizada com sucesso.",
     "emailSent": "Se a conta existir, você receberá um link de recuperação.",
@@ -168,7 +168,6 @@ const translations = {
     "selectOperationalDate": "Informe a data operacional.",
     "minersLimit": "O total de mineradoras online e offline não pode ultrapassar 1280.",
     "minersNegative": "A quantidade de mineradoras não pode ser negativa.",
-    "minersInteger": "Informe a quantidade de mineradoras em números inteiros.",
     "generatorsLimit": "O número de geradores deve estar entre 0 e 3.",
     "restPersonRequired": "Informe o nome da pessoa relacionada ao descanso/ausência.",
     "reportSaved": "Relatório salvo com sucesso.",
@@ -361,6 +360,7 @@ const translations = {
     "enterAccountEmail": "Ingresa el correo de tu cuenta.",
     "invalidEmail": "Correo electrónico no válido.",
     "passwordMin": "La contraseña debe tener al menos 8 caracteres.",
+    "passwordMaxBytes": "La contraseña no puede superar los 72 bytes.",
     "passwordMismatch": "Las contraseñas no coinciden.",
     "passwordUpdated": "Contraseña actualizada correctamente.",
     "emailSent": "Si la cuenta existe, recibirás un enlace de recuperación.",
@@ -375,7 +375,6 @@ const translations = {
     "selectOperationalDate": "Ingresa la fecha operacional.",
     "minersLimit": "El total de mineradoras en línea y fuera de línea no puede superar 1280.",
     "minersNegative": "La cantidad de mineradoras no puede ser negativa.",
-    "minersInteger": "Ingresa la cantidad de mineradoras en números enteros.",
     "generatorsLimit": "La cantidad de generadores debe estar entre 0 y 3.",
     "restPersonRequired": "Ingresa el nombre de la persona relacionada con el descanso/ausencia.",
     "reportSaved": "Informe guardado correctamente.",
@@ -568,6 +567,7 @@ const translations = {
     "enterAccountEmail": "Enter your account email.",
     "invalidEmail": "Invalid email address.",
     "passwordMin": "Password must contain at least 8 characters.",
+    "passwordMaxBytes": "Password cannot exceed 72 bytes.",
     "passwordMismatch": "Passwords do not match.",
     "passwordUpdated": "Password updated successfully.",
     "emailSent": "If the account exists, you will receive a recovery link.",
@@ -582,7 +582,6 @@ const translations = {
     "selectOperationalDate": "Enter the operational date.",
     "minersLimit": "Online and offline miners cannot exceed 1280 in total.",
     "minersNegative": "Miner count cannot be negative.",
-    "minersInteger": "Enter miner counts as whole numbers.",
     "generatorsLimit": "The number of generators must be between 0 and 3.",
     "restPersonRequired": "Enter the name of the person related to the absence.",
     "reportSaved": "Report saved successfully.",
@@ -982,9 +981,10 @@ export default function App() {
       query = query.eq("id", sharedId);
     }
 
-    const { data, error } = await query
-      .order("report_date", { ascending: false })
-      .order("created_at", { ascending: false });
+    const { data, error } = await query.order(
+      "report_date",
+      { ascending: false }
+    );
 
     if (error) {
       setNotice(error.message);
@@ -1091,6 +1091,11 @@ export default function App() {
       return;
     }
 
+    if (new TextEncoder().encode(newPassword).length > 72) {
+      setNotice(t.passwordMaxBytes);
+      return;
+    }
+
     if (newPassword !== confirmPassword) {
       setNotice(t.passwordMismatch);
       return;
@@ -1133,7 +1138,7 @@ export default function App() {
     window.history.replaceState(
       {},
       document.title,
-      window.location.pathname + window.location.search
+      window.location.pathname
     );
 
     setNotice(t.passwordUpdated);
@@ -1312,13 +1317,10 @@ export default function App() {
       return;
     }
 
-    if (
-      !Number.isFinite(online) ||
-      !Number.isFinite(offline) ||
-      !Number.isInteger(online) ||
-      !Number.isInteger(offline)
-    ) {
-      setNotice(t.minersInteger);
+    if (online + offline > TOTAL_MINERS) {
+      setNotice(
+        "Error: las mineradoras operativas y offline no pueden superar las 1280 unidades."
+      );
       return;
     }
 
@@ -1327,34 +1329,11 @@ export default function App() {
       return;
     }
 
-    if (online + offline > TOTAL_MINERS) {
-      setNotice(t.minersLimit);
-      return;
-    }
-
-    const generators = Number(form.generators_online);
-
     if (
-      form.generators_online === "" ||
-      !Number.isInteger(generators) ||
-      generators < 0 ||
-      generators > 3
+      Number(form.generators_online) < 0 ||
+      Number(form.generators_online) > 3
     ) {
       setNotice(t.generatorsLimit);
-      return;
-    }
-
-    const allowedRestTypes = [
-      "none",
-      "folga",
-      "atestado",
-      "banco de horas",
-      "ferias",
-      "falta"
-    ];
-
-    if (!allowedRestTypes.includes(form.rest_type)) {
-      setNotice(t.restPersonRequired);
       return;
     }
 
@@ -1434,6 +1413,11 @@ export default function App() {
   }
 
   async function statusChange(id, status) {
+    if (!isAdmin) {
+      setNotice(t.noPasswordPermission);
+      return;
+    }
+
     const { error } = await supabase.rpc(
       "set_operator_status",
       {
@@ -1458,24 +1442,13 @@ export default function App() {
       return;
     }
 
-    const temporaryPasswordBytes = new TextEncoder().encode(
-      temporaryPassword
-    ).length;
-
     if (temporaryPassword.length < 12) {
       setNotice(t.tempPasswordMin);
       return;
     }
 
-    if (temporaryPasswordBytes > 72) {
+    if (new TextEncoder().encode(temporaryPassword).length > 72) {
       setNotice(t.tempPasswordMax);
-      return;
-    }
-
-    const targetUser = users.find(user => user.id === id);
-
-    if (!targetUser || targetUser.role === "admin") {
-      setNotice(t.noPasswordPermission);
       return;
     }
 
@@ -1542,29 +1515,22 @@ export default function App() {
 
     setEditing(r.id);
 
-    const dayOff = String(r.day_off || "").trim();
-    const dayOffParts = dayOff.split("|");
-    const savedRestType = (dayOffParts[0] || "").trim().toLowerCase();
-    const validRestTypes = [
-      "folga",
-      "atestado",
-      "banco de horas",
-      "ferias",
-      "falta"
-    ];
-    const restType = dayOffParts.length > 1
-      ? (validRestTypes.includes(savedRestType) ? savedRestType : "none")
-      : (validRestTypes.includes(savedRestType)
-        ? savedRestType
-        : (["sí", "sim"].includes(savedRestType) ? "folga" : "none"));
+    const dayOff = r.day_off || "";
+    const oldType = dayOff.toLowerCase();
 
     setForm({
       report_date: r.report_date,
       work_shift: r.work_shift || "",
       operator_names: r.operators || "",
-      rest_type: restType,
-      rest_person: dayOffParts.length > 1
-        ? dayOffParts.slice(1).join("|").trim()
+      rest_type: dayOff.includes("|")
+        ? dayOff.split("|")[0]
+        : (
+          ["folga", "atestado", "banco de horas", "ferias", "falta"].includes(oldType)
+            ? oldType
+            : (["sí", "sim"].includes(oldType) ? "folga" : "none")
+        ),
+      rest_person: dayOff.includes("|")
+        ? dayOff.split("|").slice(1).join("|")
         : "",
       hashrate: r.hashrate_ph ?? "",
       miners_online: r.miners_online ?? "",
@@ -1639,22 +1605,14 @@ export default function App() {
   }
 
   function restText(value) {
-    if (!value || String(value).trim().toLowerCase() === "no") {
-      return t.noRest;
+    if (!value || value === "No") return t.noRest;
+
+    if (value.includes("|")) {
+      const parts = value.split("|");
+      return `${parts[0]} — ${parts.slice(1).join("|")}`;
     }
 
-    const parts = String(value).split("|");
-    const type = (parts[0] || "").trim().toLowerCase();
-    const person = parts.slice(1).join("|").trim();
-    const translatedType = ({
-      folga: t.dayOff,
-      atestado: t.medicalLeave,
-      "banco de horas": t.timeBank,
-      ferias: t.vacation,
-      falta: t.absence
-    })[type] || parts[0];
-
-    return person ? `${translatedType} — ${person}` : translatedType;
+    return value;
   }
 
   function reportCell(label, value) {
@@ -1676,7 +1634,7 @@ export default function App() {
       [t.operators, r.operators],
       [t.restLabel, restText(r.day_off)],
       [t.hash, r.hashrate_ph],
-      [t.availabilityLabel, r.availability_pct == null ? "-" : `${Number(r.availability_pct).toFixed(2)}%`],
+      [t.availabilityLabel, r.availability_pct],
       [t.onlineLabel, r.miners_online],
       [t.offlineLabel, r.miners_offline],
       [t.powerLabel, r.power_mw],
@@ -1779,33 +1737,12 @@ export default function App() {
   function shareWhatsApp(r) {
     const url =
       `${window.location.origin}/?report=${encodeURIComponent(r.id)}`;
-    const value = item =>
-      item === null || item === undefined || item === "" ? "-" : String(item);
-    const reportText = [
-      "ADECOAGRO MINING CLOUD",
-      `${t.dateLabel}: ${value(r.report_date)}`,
-      `${t.shiftLabel}: ${value(r.work_shift)}`,
-      `${t.operators}: ${value(r.operators)}`,
-      `${t.restLabel}: ${restText(r.day_off)}`,
-      `${t.hash}: ${value(r.hashrate_ph)}`,
-      `${t.availabilityLabel}: ${r.availability_pct == null ? "-" : `${Number(r.availability_pct).toFixed(2)}%`}`,
-      `${t.onlineLabel}: ${value(r.miners_online)}`,
-      `${t.offlineLabel}: ${value(r.miners_offline)}`,
-      `${t.powerLabel}: ${value(r.power_mw)} MW`,
-      `${t.monthLabel}: ${value(r.month_consumption_kwh)} kWh`,
-      `${t.generatorsLabel}: ${value(r.generators_running)}/3`,
-      `${t.incidentsLabel}: ${value(r.occurrences)}`,
-      `${t.maintenanceLabel}: ${value(r.maintenance)}`,
-      `${t.pendingLabel}: ${value(r.next_shift_pending)}`,
-      `${t.guidanceLabel}: ${value(r.supervisor_instructions)}`,
-      "",
-      `${t.shareReport}: ${url}`
-    ].join("\n");
 
     window.open(
-      `https://wa.me/?text=${encodeURIComponent(reportText)}`,
-      "_blank",
-      "noopener,noreferrer"
+      `https://wa.me/?text=${encodeURIComponent(
+        "ADECOAGRO MINING CLOUD - Informe operacional: " + url
+      )}`,
+      "_blank"
     );
   }
 
@@ -1892,33 +1829,7 @@ export default function App() {
         y += 12;
       }
 
-      function getCardHeight(value, width) {
-  const text = String(value ?? "-").trim() || "-";
-  const lines = doc.splitTextToSize(text, width - 8);
-  return Math.max(19, 13 + lines.length * 4.5);
-}
-
-function drawCard(label, value, x, width, fixedHeight) {
-  const text = String(value ?? "-").trim() || "-";
-  const lines = doc.splitTextToSize(text, width - 8);
-  const height = fixedHeight || getCardHeight(value, width);
-
-  doc.setFillColor(251, 253, 251);
-  doc.setDrawColor(185, 203, 189);
-  doc.roundedRect(x, y, width, height, 2, 2, "FD");
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7.5);
-  doc.setTextColor(38, 112, 75);
-  doc.text(label, x + 4, y + 6);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(24, 41, 35);
-  doc.text(lines, x + 4, y + 12);
-
-  return height;
-}
+      function drawCard(label, value, x, width) {
         const text = String(value ?? "-").trim() || "-";
         const lines = doc.splitTextToSize(text, width - 8);
         const height = Math.max(19, 13 + lines.length * 4.5);
@@ -1952,7 +1863,7 @@ function drawCard(label, value, x, width, fixedHeight) {
         [t.operators, r.operators],
         [t.restLabel, restText(r.day_off)],
         [t.hash, r.hashrate_ph],
-        [t.availabilityLabel, r.availability_pct == null ? "-" : `${Number(r.availability_pct).toFixed(2)}%`],
+        [t.availabilityLabel, r.availability_pct],
         [t.onlineLabel, r.miners_online],
         [t.offlineLabel, r.miners_offline],
         [t.powerLabel, r.power_mw],
@@ -1960,43 +1871,7 @@ function drawCard(label, value, x, width, fixedHeight) {
         [t.generatorsLabel, `${r.generators_running ?? "-"}/3`]
       ];
 
-  for (let i = 0; i < metrics.length; i += 2) {
-  const leftHeight = getCardHeight(
-    metrics[i][1],
-    cardWidth
-  );
-
-  const rightHeight = metrics[i + 1]
-    ? getCardHeight(metrics[i + 1][1], cardWidth)
-    : 0;
-
-  const rowHeight = Math.max(leftHeight, rightHeight);
-
-  // Mantener las dos tarjetas de la fila en la misma página.
-  if (y + rowHeight > pageHeight - 15) {
-    newPage();
-  }
-
-  drawCard(
-    metrics[i][0],
-    metrics[i][1],
-    margin,
-    cardWidth,
-    leftHeight
-  );
-
-  if (metrics[i + 1]) {
-    drawCard(
-      metrics[i + 1][0],
-      metrics[i + 1][1],
-      margin + cardWidth + gap,
-      cardWidth,
-      rightHeight
-    );
-  }
-
-  y += rowHeight + 5;
-}
+      for (let i = 0; i < metrics.length; i += 2) {
         const leftHeight = drawCard(
           metrics[i][0],
           metrics[i][1],
@@ -2767,7 +2642,7 @@ function drawCard(label, value, x, width, fixedHeight) {
                                 type="password"
                                 autoComplete="new-password"
                                 minLength={12}
-                                maxLength={72}
+                                maxLength={128}
                                 value={temporaryPassword}
                                 onChange={e => setTemporaryPassword(e.target.value)}
                                 placeholder={t.tempPasswordPlaceholder}
@@ -2779,8 +2654,7 @@ function drawCard(label, value, x, width, fixedHeight) {
                               onClick={() => assignTemporaryPassword(u.id)}
                               disabled={
                                 temporaryPasswordLoading ||
-                                temporaryPassword.length < 12 ||
-                                new TextEncoder().encode(temporaryPassword).length > 72
+                                temporaryPassword.length < 12
                               }
                             >
                               {temporaryPasswordLoading
