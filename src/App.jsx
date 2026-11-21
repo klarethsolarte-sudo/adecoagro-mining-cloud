@@ -817,6 +817,9 @@ export default function App() {
 
   const [qrReport, setQrReport] = useState(null);
   const [qrImage, setQrImage] = useState("");
+  const [publicReportUrl, setPublicReportUrl] = useState("");
+  const [savedReport, setSavedReport] = useState(null);
+  const [sharingQR, setSharingQR] = useState(false);
 
   const [activeSection, setActiveSection] = useState("home");
   const [profileName, setProfileName] = useState("");
@@ -1406,6 +1409,7 @@ export default function App() {
       setNotice(result.error.message);
     } else {
       setNotice(t.reportSaved);
+      setSavedReport(result.data);
       setForm(createBlankForm());
       setEditing(null);
       await loadReports();
@@ -1718,24 +1722,131 @@ export default function App() {
 
   async function generateQR(r) {
     try {
-      const url =
-        `${window.location.origin}/?report=${encodeURIComponent(r.id)}`;
+      setQrReport(r);
+      setQrImage("");
+      setPublicReportUrl("");
 
-      const image = await QRCode.toDataURL(url, {
-        width: 300,
+      // Espera a que React pinte el informe completo en el área de captura.
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const node = document.getElementById(`public-report-capture-${r.id}`);
+      if (!node) throw new Error("No se encontró la imagen del informe para publicar.");
+
+      const jpgData = await toJpeg(node, {
+        quality: 0.96,
+        backgroundColor: "#ffffff",
+        pixelRatio: 2,
+        cacheBust: true
+      });
+      const jpgBlob = await (await fetch(jpgData)).blob();
+      const objectPath = `${r.id}/${Date.now()}.jpg`;
+      const { error: uploadError } = await supabase.storage
+        .from("public-report-images")
+        .upload(objectPath, jpgBlob, {
+          contentType: "image/jpeg",
+          cacheControl: "31536000",
+          upsert: false
+        });
+      if (uploadError) throw uploadError;
+
+      const { data: publicData } = supabase.storage
+        .from("public-report-images")
+        .getPublicUrl(objectPath);
+      if (!publicData?.publicUrl) throw new Error("No se pudo obtener el enlace público de la imagen.");
+
+      setPublicReportUrl(publicData.publicUrl);
+      const image = await QRCode.toDataURL(publicData.publicUrl, {
+        width: 360,
         margin: 2,
         errorCorrectionLevel: "H"
       });
-
       setQrImage(image);
-      setQrReport(r);
     } catch (error) {
+      setQrReport(null);
       setNotice(`${t.qrError} ${error.message}`);
     }
   }
 
-  function shareWhatsApp(r) {
-    const url =
+  async function shareQRJpg(r) {
+    if (!r) return;
+    setSharingQR(true);
+
+    try {
+      if (!publicReportUrl) throw new Error("Primero espera a que termine de prepararse el QR público.");
+      const url = publicReportUrl;
+      const qrData = await QRCode.toDataURL(url, {
+        width: 640,
+        margin: 2,
+        errorCorrectionLevel: "H"
+      });
+
+      const qr = new Image();
+      qr.src = qrData;
+      await new Promise((resolve, reject) => {
+        qr.onload = resolve;
+        qr.onerror = reject;
+      });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = 900;
+      canvas.height = 1080;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("No fue posible preparar la imagen.");
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#164d35";
+      ctx.fillRect(0, 0, canvas.width, 190);
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "center";
+      ctx.font = "bold 42px Arial";
+      ctx.fillText("ADECOAGRO MINING CLOUD", 450, 82);
+      ctx.font = "26px Arial";
+      ctx.fillText(t.reportSubtitle, 450, 132);
+
+      ctx.fillStyle = "#203d2d";
+      ctx.font = "bold 34px Arial";
+      ctx.fillText(`${r.report_date || ""}  ·  ${t.shiftLabel} ${r.work_shift || "-"}`, 450, 250);
+      ctx.font = "28px Arial";
+      const operatorText = String(r.operators || "");
+      ctx.fillText(operatorText.length > 48 ? operatorText.slice(0, 45) + "..." : operatorText, 450, 300);
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(120, 340, 660, 660);
+      ctx.drawImage(qr, 130, 350, 640, 640);
+      ctx.fillStyle = "#164d35";
+      ctx.font = "bold 27px Arial";
+      ctx.fillText(t.qrScanInstruction, 450, 1035);
+
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.94));
+      if (!blob) throw new Error("No fue posible crear el archivo JPG.");
+      const filename = `adecoagro-qr-${r.report_date}-turno-${r.work_shift || "sin-turno"}.jpg`;
+      const file = new File([blob], filename, { type: "image/jpeg" });
+
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: "ADECOAGRO MINING CLOUD",
+          text: `Informe operacional ${r.report_date} · Turno ${r.work_shift || "-"}`,
+          files: [file]
+        });
+      } else {
+        const objectUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = objectUrl;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(objectUrl);
+        window.open(`https://wa.me/?text=${encodeURIComponent("ADECOAGRO MINING CLOUD - Informe operacional: " + url)}`, "_blank");
+        setNotice("Imagen JPG descargada. Adjunta ese archivo en WhatsApp, Messenger u otro chat.");
+      }
+    } catch (error) {
+      if (error?.name !== "AbortError") setNotice(`No se pudo compartir el JPG: ${error.message}`);
+    } finally {
+      setSharingQR(false);
+    }
+  }
+
+  function shareWhatsApp(r, sharedUrl = "") {
+    const url = sharedUrl ||
       `${window.location.origin}/?report=${encodeURIComponent(r.id)}`;
 
     window.open(
@@ -2845,8 +2956,43 @@ export default function App() {
         </>
       )}
 
-      {qrReport && qrImage && (
+      {savedReport && (
         <div className="qr-overlay">
+          <section className="panel qr-modal saved-report-modal">
+            <h2>Informe guardado correctamente</h2>
+            <p>{savedReport.report_date} · Turno {savedReport.work_shift || "-"}</p>
+            <p>¿Qué deseas hacer ahora?</p>
+            <div className="saved-report-actions">
+              <button onClick={() => exportJpg(savedReport)}>Descargar JPG</button>
+              <button onClick={() => exportPdf(savedReport)}>Descargar PDF</button>
+              <button onClick={() => { setSavedReport(null); generateQR(savedReport); }}>Generar QR</button>
+              {(isAdmin || savedReport.created_by === session?.user?.id) && (
+                <button className="secondary" onClick={() => { const r = savedReport; setSavedReport(null); edit(r); }}>Editar informe</button>
+              )}
+            </div>
+            <button className="secondary" onClick={() => setSavedReport(null)}>Terminar</button>
+          </section>
+        </div>
+      )}
+
+      {qrReport && (
+        <>
+          <div
+            id={`public-report-capture-${qrReport.id}`}
+            aria-hidden="true"
+            style={{
+              position: "fixed",
+              left: "-12000px",
+              top: 0,
+              width: "760px",
+              background: "#ffffff",
+              pointerEvents: "none",
+              zIndex: -1
+            }}
+          >
+            {renderReport({ ...qrReport, id: `public-${qrReport.id}` })}
+          </div>
+          <div className="qr-overlay">
           <section className="panel qr-modal">
             <h2>{t.shareReport}</h2>
 
@@ -2856,12 +3002,19 @@ export default function App() {
               {" "}{qrReport.operators}
             </p>
 
-            <img src={qrImage} alt="Código QR del informe" />
+            {qrImage ? (
+              <img src={qrImage} alt="Código QR del informe" />
+            ) : (
+              <p>Preparando el JPG público del informe y su código QR...</p>
+            )}
 
             <p>{t.qrScanInstruction}</p>
 
-            <button onClick={() => shareWhatsApp(qrReport)}>
-              {t.shareWhatsApp}
+            <button onClick={() => shareQRJpg(qrReport)} disabled={sharingQR || !qrImage}>
+              {sharingQR ? "Preparando JPG..." : "Compartir imagen QR en JPG"}
+            </button>
+            <button className="secondary" onClick={() => shareWhatsApp(qrReport, publicReportUrl)} disabled={!publicReportUrl}>
+              Compartir enlace público por WhatsApp
             </button>
 
             <button
@@ -2869,12 +3022,14 @@ export default function App() {
               onClick={() => {
                 setQrReport(null);
                 setQrImage("");
+                setPublicReportUrl("");
               }}
             >
               Cerrar
             </button>
           </section>
-        </div>
+          </div>
+        </>
       )}
 
       {notice && (
