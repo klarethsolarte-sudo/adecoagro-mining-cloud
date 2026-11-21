@@ -1731,6 +1731,15 @@ export default function App() {
       const node = document.getElementById(`public-report-capture-${r.id}`);
       if (!node) throw new Error("No se encontró la imagen del informe para publicar.");
 
+      // Espera a que el contenido y las imágenes del informe estén completamente cargados.
+      if (document.fonts?.ready) await document.fonts.ready;
+      await Promise.all(
+        Array.from(node.querySelectorAll("img")).map(img =>
+          img.decode ? img.decode().catch(() => {}) : Promise.resolve()
+        )
+      );
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
       const jpgData = await toJpeg(node, {
         quality: 0.96,
         backgroundColor: "#ffffff",
@@ -2981,13 +2990,16 @@ export default function App() {
             id={`public-report-capture-${qrReport.id}`}
             aria-hidden="true"
             style={{
+              // Mantener el informe dentro del área visible del navegador para
+              // que html-to-image pueda capturarlo correctamente. El modal QR
+              // queda por encima y el informe no interfiere con los controles.
               position: "fixed",
-              left: "-12000px",
+              left: 0,
               top: 0,
               width: "760px",
               background: "#ffffff",
               pointerEvents: "none",
-              zIndex: -1
+              zIndex: 0
             }}
           >
             {renderReport({ ...qrReport, id: `public-${qrReport.id}` })}
