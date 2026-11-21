@@ -691,18 +691,23 @@ function createBlankForm() {
 }
 
 const fields = [
+  // Identificação do relatório
   "report_date",
   "work_shift",
   "operator_names",
   "rest_type",
   "rest_person",
+
+  // Indicadores operacionais: pares relacionados lado a lado
   "hashrate",
+  "availability",
   "miners_online",
   "miners_offline",
-  "availability",
   "power_mw",
   "monthly_kwh",
   "generators_online",
+
+  // Registros e orientações do turno
   "incidents",
   "maintenance",
   "next_shift_pending",
