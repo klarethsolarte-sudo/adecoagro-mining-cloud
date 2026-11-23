@@ -2446,42 +2446,36 @@ export default function App() {
         </div>
       </header>
 
-{!session ? (
-  <section className="panel login">
-    <h1>ADECOAGRO MINING CLOUD</h1>
-    <p>{t.googleRegistration}</p>
 
-    {campaigns.filter(item => item.active).length > 0 && (
-      <section className="campaign-strip" aria-label="Campanhas corporativas">
-        {campaigns.filter(item => item.active).slice(0, 2).map(item => (
-          <article className="campaign-card" key={item.id}>
-            {item.media_url && (item.media_type === "video" ?
-              <video src={item.media_url} controls playsInline preload="metadata" /> :
-              <img src={item.media_url} alt={item.title} loading="lazy" />)}
-            <div className="campaign-copy"><strong>{item.title}</strong>
-              {item.description && <p>{item.description}</p>}
-              {item.link_url && <a href={item.link_url} target="_blank" rel="noreferrer">Saiba mais ↗</a>}
-            </div>
-          </article>
-        ))}
-      </section>
-    )}
+{!session ? (
+  <section className="login-panel">
+    <div className="login-brand">
+      <img
+        src={LOGO}
+        alt="ADECOAGRO"
+        style={{
+          width: "100px",
+          height: "100px",
+          objectFit: "contain",
+          marginBottom: "12px"
+        }}
+      />
+
+      <h1>ADECOAGRO</h1>
+      <h2>MINING CLOUD</h2>
+      <p>Energia em crescimento</p>
+    </div>
+
+    <p style={{ textAlign: "center" }}>
+      {t.googleRegistration}
+    </p>
 
     {!isAppInstalled && (deferredInstallPrompt || isIOSDevice) && (
       <div style={{ margin: "14px 0", textAlign: "center" }}>
         <button
           type="button"
           onClick={installApp}
-          style={{
-            width: "100%",
-            background: "#176b45",
-            color: "#ffffff",
-            border: "none",
-            borderRadius: "10px",
-            padding: "13px 16px",
-            fontWeight: "700",
-            cursor: "pointer"
-          }}
+          disabled={!deferredInstallPrompt && !isIOSDevice}
         >
           {t.installApp}
         </button>
@@ -2494,7 +2488,12 @@ export default function App() {
       </div>
     )}
 
-    <button onClick={signInGoogle} disabled={authLoading}>
+    <button
+      type="button"
+      className="login-google"
+      onClick={signInGoogle}
+      disabled={authLoading}
+    >
       {authLoading ? t.wait : t.login}
     </button>
 
@@ -2507,38 +2506,41 @@ export default function App() {
         {t.email}
         <input
           type="email"
-          autoComplete="username"
+          autoComplete="email"
           value={authEmail}
           onChange={e => setAuthEmail(e.target.value)}
-          placeholder={t.emailPlaceholder}
           required
         />
       </label>
 
       <label>
         {t.password}
-        <div className="password-input">
+        <div style={{ display: "flex", gap: "8px" }}>
           <input
             type={showPassword ? "text" : "password"}
             autoComplete="current-password"
             value={authPassword}
             onChange={e => setAuthPassword(e.target.value)}
-            placeholder={t.passwordPlaceholder}
             required
           />
 
           <button
             type="button"
             className="secondary"
+            style={{ width: "75px", marginTop: "7px" }}
             onClick={() => setShowPassword(!showPassword)}
           >
-            {showPassword ? t.hide : t.show}
+            {showPassword ? "Ocultar" : "Ver"}
           </button>
         </div>
       </label>
 
-      <button type="submit" disabled={authLoading}>
-        {authLoading ? t.entering : t.loginEmail}
+      <button
+        type="submit"
+        className="login-submit"
+        disabled={authLoading}
+      >
+        {authLoading ? t.wait : t.emailLogin}
       </button>
     </form>
 
@@ -2551,8 +2553,17 @@ export default function App() {
       {t.forgotPassword}
     </button>
 
-    {notice && <p>{notice}</p>}
+    {notice && (
+      <p role="alert" style={{ textAlign: "center" }}>
+        {notice}
+      </p>
+    )}
+
+    <div className="login-footer">
+      ADECOAGRO · ENERGIA EM CRESCIMENTO
+    </div>
   </section>
+) : !profile ? (
 
       ) : !profile ? (
         <section className="panel">
