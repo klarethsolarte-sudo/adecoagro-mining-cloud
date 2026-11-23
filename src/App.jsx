@@ -2414,7 +2414,7 @@ export default function App() {
   }
 
   return (
-    <main className={`app-layout ${session ? "authenticated" : "unauthenticated"}`}>
+    <main className={session ? "app-layout authenticated" : "login-screen"}>
       <header>
         <div className="brand-area">
           <img
