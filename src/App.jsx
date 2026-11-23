@@ -864,23 +864,6 @@ export default function App() {
   // Fotografía de perfil
   const [photoLoading, setPhotoLoading] = useState(false);
 
-  // Panel de mercado Bitcoin y minería (fuentes públicas)
-  const [marketData, setMarketData] = useState(null);
-  const [marketLoading, setMarketLoading] = useState(false);
-  const [marketError, setMarketError] = useState("");
-  const [marketUpdatedAt, setMarketUpdatedAt] = useState(null);
-
-  // Campañas corporativas compartidas mediante Supabase
-  const [campaigns, setCampaigns] = useState([]);
-  const [campaignError, setCampaignError] = useState("");
-  const [campaignTitle, setCampaignTitle] = useState("");
-  const [campaignDescription, setCampaignDescription] = useState("");
-  const [campaignMediaUrl, setCampaignMediaUrl] = useState("");
-  const [campaignLinkUrl, setCampaignLinkUrl] = useState("");
-  const [campaignMediaType, setCampaignMediaType] = useState("image");
-  const [campaignSaving, setCampaignSaving] = useState(false);
-  const [editingCampaignId, setEditingCampaignId] = useState(null);
-
   // Administración de contraseñas temporales
   const [temporaryPasswordUser, setTemporaryPasswordUser] = useState("");
   const [temporaryPassword, setTemporaryPassword] = useState("");
@@ -922,81 +905,7 @@ export default function App() {
     return matchesDate && matchesShift && matchesOperator;
   });
 
-  // Actualiza indicadores de Bitcoin/minería cada 60 segundos.
-  useEffect(() => {
-    let cancelled = false;
-    const refresh = async () => {
-      setMarketLoading(true);
-      try {
-        const endpoints = [
-          "https://mempool.space/api/v1/prices",
-          "https://mempool.space/api/v1/mining/hashrate/3d",
-          "https://mempool.space/api/blocks/tip/height",
-          "https://economia.awesomeapi.com.br/json/last/USD-BRL"
-        ];
-        const responses = await Promise.all(endpoints.map(url =>
-          fetch(url, { headers: { Accept: "application/json" } })
-        ));
-        if (responses.some(response => !response.ok)) {
-          throw new Error("Una fuente externa no respondió correctamente.");
-        }
-        const [prices, mining, heightText, exchange] = await Promise.all(
-          responses.map(response => response.json())
-        );
-        let marketStats = null;
-        try {
-          const statsResponse = await fetch("https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT", {
-            headers: { Accept: "application/json" }
-          });
-          if (statsResponse.ok) marketStats = await statsResponse.json();
-        } catch (_) {
-          // A cotação principal continua disponível se a estatística da Binance falhar.
-        }
-        if (cancelled) return;
-        const blockHeight = Number(heightText);
-        const halvings = Math.floor(blockHeight / 210000);
-        const nextHalvingHeight = (halvings + 1) * 210000;
-        const subsidy = 50 / Math.pow(2, halvings);
-        const btcUsd = Number(prices?.USD);
-        const usdBrl = Number(exchange?.USDBRL?.bid);
-        const directBtcBrl = Number(prices?.BRL);
-        const btcBrl = Number.isFinite(directBtcBrl) && directBtcBrl > 0
-          ? directBtcBrl
-          : Number.isFinite(btcUsd) && btcUsd > 0 && Number.isFinite(usdBrl) && usdBrl > 0
-            ? btcUsd * usdBrl
-            : null;
-        setMarketData({
-          btcUsd: Number.isFinite(btcUsd) && btcUsd > 0 ? btcUsd : null,
-          btcBrl,
-          usdBrl: Number.isFinite(usdBrl) && usdBrl > 0 ? usdBrl : null,
-          hashrate: mining.currentHashrate ?? null,
-          difficulty: mining.currentDifficulty ?? null,
-          blockHeight: Number.isFinite(blockHeight) ? blockHeight : null,
-          nextHalvingHeight,
-          blocksToHalving: Number.isFinite(blockHeight) ? Math.max(0, nextHalvingHeight - blockHeight) : null,
-          subsidy,
-          change24h: marketStats ? Number(marketStats.priceChangePercent) : null,
-          high24h: marketStats ? Number(marketStats.highPrice) : null,
-          low24h: marketStats ? Number(marketStats.lowPrice) : null,
-          volume24h: marketStats ? Number(marketStats.quoteVolume) : null
-        });
-        setMarketUpdatedAt(new Date());
-        setMarketError("");
-      } catch (error) {
-        if (!cancelled) setMarketError(error?.message || "No fue posible actualizar los indicadores.");
-      } finally {
-        if (!cancelled) setMarketLoading(false);
-      }
-    };
-    refresh();
-    const interval = window.setInterval(refresh, 60000);
-    return () => { cancelled = true; window.clearInterval(interval); };
-  }, []);
 
-  // Las campañas activas se muestran también en la pantalla de acceso.
-  useEffect(() => {
-    loadCampaigns();
-  }, [session, isAdmin]);
 
   useEffect(() => {
     if (!configured) return;
@@ -1090,78 +999,6 @@ export default function App() {
     }
   }, []);
 
-  async function loadCampaigns() {
-    if (!configured) return;
-    let query = supabase.from("corporate_campaigns").select("*").order("created_at", { ascending: false });
-    if (!isAdmin) query = query.eq("active", true);
-    const { data, error } = await query;
-    if (error) {
-      setCampaignError(error.message);
-      return;
-    }
-    setCampaigns(data || []);
-    setCampaignError("");
-  }
-
-  async function saveCampaign(e) {
-    e.preventDefault();
-    if (!isAdmin) return;
-    if (!campaignTitle.trim()) { setCampaignError("Informe o título da campanha."); return; }
-    setCampaignSaving(true);
-    const payload = {
-      title: campaignTitle.trim(),
-      description: campaignDescription.trim(),
-      media_url: campaignMediaUrl.trim(),
-      link_url: campaignLinkUrl.trim(),
-      media_type: campaignMediaType
-    };
-    // Editar el contenido no debe reactivar campañas que estaban pausadas.
-    const result = editingCampaignId
-      ? await supabase.from("corporate_campaigns").update(payload).eq("id", editingCampaignId)
-      : await supabase.from("corporate_campaigns").insert({ ...payload, active: true, created_by: session.user.id });
-    setCampaignSaving(false);
-    if (result.error) { setCampaignError(result.error.message); return; }
-    setCampaignTitle(""); setCampaignDescription(""); setCampaignMediaUrl("");
-    setCampaignLinkUrl(""); setCampaignMediaType("image"); setEditingCampaignId(null);
-    await loadCampaigns();
-    setNotice("Campanha salva com sucesso.");
-  }
-
-  async function toggleCampaign(campaign) {
-    if (!isAdmin) return;
-    const { error } = await supabase.from("corporate_campaigns")
-      .update({ active: !campaign.active }).eq("id", campaign.id);
-    if (error) { setCampaignError(error.message); return; }
-    await loadCampaigns();
-  }
-
-  async function deleteCampaign(campaign) {
-    if (!isAdmin || !window.confirm("Deseja excluir esta campanha?")) return;
-    const { error } = await supabase.from("corporate_campaigns").delete().eq("id", campaign.id);
-    if (error) { setCampaignError(error.message); return; }
-    await loadCampaigns();
-  }
-
-  function editCampaign(campaign) {
-    setEditingCampaignId(campaign.id); setCampaignTitle(campaign.title || "");
-    setCampaignDescription(campaign.description || ""); setCampaignMediaUrl(campaign.media_url || "");
-    setCampaignLinkUrl(campaign.link_url || ""); setCampaignMediaType(campaign.media_type || "image");
-  }
-
-  function money(value, currency) {
-    if (value === null || value === undefined || !Number.isFinite(Number(value))) return "—";
-    return new Intl.NumberFormat(lang === "en-US" ? "en-US" : lang === "pt-BR" ? "pt-BR" : "es-419", {
-      style: "currency", currency, maximumFractionDigits: currency === "BRL" ? 2 : 0
-    }).format(Number(value));
-  }
-
-  function compactHashrate(value) {
-    if (value === null || value === undefined || !Number.isFinite(Number(value))) return "—";
-    const n = Number(value);
-    if (n >= 1e18) return `${(n / 1e18).toFixed(2)} EH/s`;
-    if (n >= 1e15) return `${(n / 1e15).toFixed(2)} PH/s`;
-    return `${(n / 1e12).toFixed(2)} TH/s`;
-  }
 
   async function loadProfile() {
     const currentSession = session;
@@ -2414,7 +2251,7 @@ export default function App() {
   }
 
   return (
-    <main className={session ? "app-layout authenticated" : "login-screen"}>
+    <main className={`app-layout ${session ? "authenticated" : "unauthenticated"}`}>
       <header>
         <div className="brand-area">
           <img
@@ -2446,36 +2283,27 @@ export default function App() {
         </div>
       </header>
 
-
 {!session ? (
-  <section className="login-panel">
-    <div className="login-brand">
-      <img
-        src={LOGO}
-        alt="ADECOAGRO"
-        style={{
-          width: "100px",
-          height: "100px",
-          objectFit: "contain",
-          marginBottom: "12px"
-        }}
-      />
+  <section className="panel login">
+    <h1>ADECOAGRO MINING CLOUD</h1>
+    <p>{t.googleRegistration}</p>
 
-      <h1>ADECOAGRO</h1>
-      <h2>MINING CLOUD</h2>
-      <p>Energia em crescimento</p>
-    </div>
-
-    <p style={{ textAlign: "center" }}>
-      {t.googleRegistration}
-    </p>
 
     {!isAppInstalled && (deferredInstallPrompt || isIOSDevice) && (
       <div style={{ margin: "14px 0", textAlign: "center" }}>
         <button
           type="button"
           onClick={installApp}
-          disabled={!deferredInstallPrompt && !isIOSDevice}
+          style={{
+            width: "100%",
+            background: "#176b45",
+            color: "#ffffff",
+            border: "none",
+            borderRadius: "10px",
+            padding: "13px 16px",
+            fontWeight: "700",
+            cursor: "pointer"
+          }}
         >
           {t.installApp}
         </button>
@@ -2488,12 +2316,7 @@ export default function App() {
       </div>
     )}
 
-    <button
-      type="button"
-      className="login-google"
-      onClick={signInGoogle}
-      disabled={authLoading}
-    >
+    <button onClick={signInGoogle} disabled={authLoading}>
       {authLoading ? t.wait : t.login}
     </button>
 
@@ -2506,41 +2329,38 @@ export default function App() {
         {t.email}
         <input
           type="email"
-          autoComplete="email"
+          autoComplete="username"
           value={authEmail}
           onChange={e => setAuthEmail(e.target.value)}
+          placeholder={t.emailPlaceholder}
           required
         />
       </label>
 
       <label>
         {t.password}
-        <div style={{ display: "flex", gap: "8px" }}>
+        <div className="password-input">
           <input
             type={showPassword ? "text" : "password"}
             autoComplete="current-password"
             value={authPassword}
             onChange={e => setAuthPassword(e.target.value)}
+            placeholder={t.passwordPlaceholder}
             required
           />
 
           <button
             type="button"
             className="secondary"
-            style={{ width: "75px", marginTop: "7px" }}
             onClick={() => setShowPassword(!showPassword)}
           >
-            {showPassword ? "Ocultar" : "Ver"}
+            {showPassword ? t.hide : t.show}
           </button>
         </div>
       </label>
 
-      <button
-        type="submit"
-        className="login-submit"
-        disabled={authLoading}
-      >
-        {authLoading ? t.wait : t.emailLogin}
+      <button type="submit" disabled={authLoading}>
+        {authLoading ? t.entering : t.loginEmail}
       </button>
     </form>
 
@@ -2553,17 +2373,9 @@ export default function App() {
       {t.forgotPassword}
     </button>
 
-    {notice && (
-      <p role="alert" style={{ textAlign: "center" }}>
-        {notice}
-      </p>
-    )}
-
-    <div className="login-footer">
-      ADECOAGRO · ENERGIA EM CRESCIMENTO
-    </div>
+    {notice && <p>{notice}</p>}
   </section>
-  
+
       ) : !profile ? (
         <section className="panel">
           <p>{t.loadingProfile}</p>
@@ -2719,83 +2531,6 @@ export default function App() {
                   <p className="dashboard-empty">{t.noDashboardData}</p>
                 )}
               </section>
-
-              <section className="dashboard-section market-section">
-                <div className="dashboard-heading">
-                  <div><h3>Mercado Bitcoin e mineração global</h3>
-                    <span>Indicadores públicos · Atualização automática a cada 60 segundos</span></div>
-                  <span>{marketLoading ? "Atualizando…" : marketUpdatedAt ? `Atualizado: ${marketUpdatedAt.toLocaleTimeString()}` : "Aguardando dados"}</span>
-                </div>
-                {marketError && <p className="dashboard-empty">Dados temporariamente indisponíveis: {marketError}</p>}
-                <div className="dashboard-grid">
-                  <div className="metric-card"><span>Bitcoin · USD</span><strong>{money(marketData?.btcUsd, "USD")}</strong></div>
-                  <div className="metric-card"><span>Bitcoin · BRL</span><strong>{money(marketData?.btcBrl, "BRL")}</strong></div>
-                  <div className="metric-card"><span>Variação BTC · 24 horas</span><strong>{marketData?.change24h != null ? `${marketData.change24h > 0 ? "+" : ""}${marketData.change24h.toFixed(2)}%` : "—"}</strong></div>
-                  <div className="metric-card"><span>Máxima BTC · 24 horas</span><strong>{money(marketData?.high24h, "USD")}</strong></div>
-                  <div className="metric-card"><span>Mínima BTC · 24 horas</span><strong>{money(marketData?.low24h, "USD")}</strong></div>
-                  <div className="metric-card"><span>Volume BTC · 24 horas</span><strong>{marketData?.volume24h != null ? money(marketData.volume24h, "USD") : "—"}</strong></div>
-                  <div className="metric-card"><span>Dólar comercial · BRL</span><strong>{money(marketData?.usdBrl, "BRL")}</strong></div>
-                  <div className="metric-card"><span>Hashrate da rede Bitcoin</span><strong>{compactHashrate(marketData?.hashrate)}</strong></div>
-                  <div className="metric-card"><span>Dificuldade da rede</span><strong>{marketData?.difficulty ? `${(marketData.difficulty / 1e12).toFixed(2)} T` : "—"}</strong></div>
-                  <div className="metric-card"><span>Recompensa por bloco</span><strong>{marketData?.subsidy != null ? `${marketData.subsidy} BTC` : "—"}</strong></div>
-                  <div className="metric-card"><span>Altura do bloco atual</span><strong>{marketData?.blockHeight?.toLocaleString() || "—"}</strong></div>
-                  <div className="metric-card"><span>Blocos estimados até o halving</span><strong>{marketData?.blocksToHalving?.toLocaleString() || "—"}</strong></div>
-                </div>
-                <div className="market-chart-wrap">
-                  <h4>Gráfico Bitcoin / Dólar</h4>
-                  <iframe
-                    title="Gráfico de preço do Bitcoin em dólares"
-                    src="https://s.tradingview.com/widgetembed/?symbol=BITSTAMP%3ABTCUSD&interval=D&hidesidetoolbar=1&symboledit=0&saveimage=0&toolbarbg=%23f1f3f6&theme=light&style=1&timezone=Etc%2FUTC&withdateranges=1&hideideas=1&locale=br"
-                    loading="lazy"
-                    referrerPolicy="no-referrer"
-                    allow="clipboard-write"
-                  />
-                </div>
-                <p className="data-source-note">Fontes: mempool.space (preço, hashrate, dificuldade e altura do bloco), Binance (estatísticas BTC/USDT 24h), AwesomeAPI (USD/BRL) e TradingView (gráfico). Indicadores informativos; valores podem sofrer atraso ou indisponibilidade.</p>
-              </section>
-
-              <section className="dashboard-section innovation-section">
-                <div className="dashboard-heading"><h3>Tecnologia, inovação e energia</h3><span>Portais internacionais e fontes setoriais — links externos, não manchetes em tempo real</span></div>
-                <div className="innovation-grid" aria-label="Portais internacionais de notícias e informação setorial">
-                  <a href="https://www.iea.org/topics/energy-and-digitalisation" target="_blank" rel="noreferrer"><strong>Energia e digitalização</strong><span>Agência Internacional de Energia · tendências de energia e tecnologia</span></a>
-                  <a href="https://www.reuters.com/technology/" target="_blank" rel="noreferrer"><strong>Tecnologia internacional</strong><span>Reuters · notícias e inovação tecnológica</span></a>
-                  <a href="https://www.coindesk.com/" target="_blank" rel="noreferrer"><strong>Bitcoin e ativos digitais</strong><span>CoinDesk · mercado e ecossistema cripto</span></a>
-                  <a href="https://www.irena.org/" target="_blank" rel="noreferrer"><strong>Energia renovável</strong><span>IRENA · transição energética e inovação</span></a>
-                </div>
-              </section>
-
-              {campaigns.filter(item => item.active).length > 0 && (
-                <section className="dashboard-section">
-                  <div className="dashboard-heading"><h3>Campanhas e comunicados ADECOAGRO</h3><span>Comunicação corporativa</span></div>
-                  <div className="campaign-strip">
-                    {campaigns.filter(item => item.active).map(item => (
-                      <article className="campaign-card" key={item.id}>
-                        {item.media_url && (item.media_type === "video" ? <video src={item.media_url} controls playsInline preload="metadata" /> : <img src={item.media_url} alt={item.title} loading="lazy" />)}
-                        <div className="campaign-copy"><strong>{item.title}</strong>{item.description && <p>{item.description}</p>}{item.link_url && <a href={item.link_url} target="_blank" rel="noreferrer">Saiba mais ↗</a>}</div>
-                      </article>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {isAdmin && (
-                <section className="dashboard-section campaign-admin">
-                  <div className="dashboard-heading"><h3>Administração de publicidade</h3><span>Gerencie banners, vídeos e comunicados</span></div>
-                  <form onSubmit={saveCampaign} className="campaign-form">
-                    <label>Título da campanha<input value={campaignTitle} onChange={e => setCampaignTitle(e.target.value)} required /></label>
-                    <label>Descrição<textarea rows="2" value={campaignDescription} onChange={e => setCampaignDescription(e.target.value)} /></label>
-                    <label>Tipo de mídia<select value={campaignMediaType} onChange={e => setCampaignMediaType(e.target.value)}><option value="image">Imagem</option><option value="video">Vídeo</option></select></label>
-                    <label>URL pública da imagem ou vídeo<input type="url" value={campaignMediaUrl} onChange={e => setCampaignMediaUrl(e.target.value)} placeholder="https://…" /></label>
-                    <label>Link de destino (opcional)<input type="url" value={campaignLinkUrl} onChange={e => setCampaignLinkUrl(e.target.value)} placeholder="https://…" /></label>
-                    <div className="campaign-form-actions"><button type="submit" disabled={campaignSaving}>{campaignSaving ? "Salvando…" : editingCampaignId ? "Atualizar campanha" : "Publicar campanha"}</button>{editingCampaignId && <button type="button" className="secondary" onClick={() => { setEditingCampaignId(null); setCampaignTitle(""); setCampaignDescription(""); setCampaignMediaUrl(""); setCampaignLinkUrl(""); }}>Cancelar edição</button>}</div>
-                  </form>
-                  {campaignError && <p className="campaign-error">{campaignError}</p>}
-                  <div className="campaign-list">
-                    {campaigns.map(item => <div className="campaign-row" key={item.id}><span><strong>{item.title}</strong><small>{item.active ? "Publicada" : "Pausada"}</small></span><div><button type="button" className="secondary" onClick={() => editCampaign(item)}>Editar</button><button type="button" className="secondary" onClick={() => toggleCampaign(item)}>{item.active ? "Pausar" : "Ativar"}</button><button type="button" className="danger" onClick={() => deleteCampaign(item)}>Excluir</button></div></div>)}
-                  </div>
-                  <p className="data-source-note">A mídia deve estar hospedada em uma URL pública HTTPS. A tabela compartilhada de campanhas precisa ser criada no Supabase com o SQL fornecido junto ao arquivo.</p>
-                </section>
-              )}
 
               <form onSubmit={save} lang={lang} spellCheck={true}>
                 <div className="fields">
