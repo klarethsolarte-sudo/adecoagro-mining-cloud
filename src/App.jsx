@@ -957,10 +957,18 @@ export default function App() {
         const halvings = Math.floor(blockHeight / 210000);
         const nextHalvingHeight = (halvings + 1) * 210000;
         const subsidy = 50 / Math.pow(2, halvings);
+        const btcUsd = Number(prices?.USD);
+        const usdBrl = Number(exchange?.USDBRL?.bid);
+        const directBtcBrl = Number(prices?.BRL);
+        const btcBrl = Number.isFinite(directBtcBrl) && directBtcBrl > 0
+          ? directBtcBrl
+          : Number.isFinite(btcUsd) && btcUsd > 0 && Number.isFinite(usdBrl) && usdBrl > 0
+            ? btcUsd * usdBrl
+            : null;
         setMarketData({
-          btcUsd: prices.USD ?? null,
-          btcBrl: prices.BRL ?? null,
-          usdBrl: Number(exchange?.USDBRL?.bid) || null,
+          btcUsd: Number.isFinite(btcUsd) && btcUsd > 0 ? btcUsd : null,
+          btcBrl,
+          usdBrl: Number.isFinite(usdBrl) && usdBrl > 0 ? usdBrl : null,
           hashrate: mining.currentHashrate ?? null,
           difficulty: mining.currentDifficulty ?? null,
           blockHeight: Number.isFinite(blockHeight) ? blockHeight : null,
@@ -1105,12 +1113,12 @@ export default function App() {
       description: campaignDescription.trim(),
       media_url: campaignMediaUrl.trim(),
       link_url: campaignLinkUrl.trim(),
-      media_type: campaignMediaType,
-      active: true
+      media_type: campaignMediaType
     };
+    // Editar el contenido no debe reactivar campañas que estaban pausadas.
     const result = editingCampaignId
       ? await supabase.from("corporate_campaigns").update(payload).eq("id", editingCampaignId)
-      : await supabase.from("corporate_campaigns").insert({ ...payload, created_by: session.user.id });
+      : await supabase.from("corporate_campaigns").insert({ ...payload, active: true, created_by: session.user.id });
     setCampaignSaving(false);
     if (result.error) { setCampaignError(result.error.message); return; }
     setCampaignTitle(""); setCampaignDescription(""); setCampaignMediaUrl("");
@@ -2737,8 +2745,8 @@ export default function App() {
               </section>
 
               <section className="dashboard-section innovation-section">
-                <div className="dashboard-heading"><h3>Tecnologia, inovação e energia</h3><span>Fontes externas para acompanhamento do setor</span></div>
-                <div className="innovation-grid">
+                <div className="dashboard-heading"><h3>Tecnologia, inovação e energia</h3><span>Portais internacionais e fontes setoriais — links externos, não manchetes em tempo real</span></div>
+                <div className="innovation-grid" aria-label="Portais internacionais de notícias e informação setorial">
                   <a href="https://www.iea.org/topics/energy-and-digitalisation" target="_blank" rel="noreferrer"><strong>Energia e digitalização</strong><span>Agência Internacional de Energia · tendências de energia e tecnologia</span></a>
                   <a href="https://www.reuters.com/technology/" target="_blank" rel="noreferrer"><strong>Tecnologia internacional</strong><span>Reuters · notícias e inovação tecnológica</span></a>
                   <a href="https://www.coindesk.com/" target="_blank" rel="noreferrer"><strong>Bitcoin e ativos digitais</strong><span>CoinDesk · mercado e ecossistema cripto</span></a>
