@@ -216,7 +216,10 @@ const translations = {
     "passwordDescription": "Defina uma senha para entrar com e-mail além do Google, ou altere sua senha atual.",
     "confirmNewPassword": "Confirmar nova senha",
     "qrScanInstruction": "Escaneie para abrir este relatório.",
-    "sending": "Enviando..."
+    "sending": "Enviando...",
+    "installApp": "Instalar ADECOAGRO MINING CLOUD",
+    "iosInstallHelp": "Para instalar: toque Compartilhar no navegador e escolha “Adicionar à Tela de Início”.",
+    "installing": "Preparando instalação..."
   },
   "es-419": {
     "login": "Entrar con Google",
@@ -423,7 +426,10 @@ const translations = {
     "passwordDescription": "Establece una contraseña para entrar con correo además de Google, o cambia tu contraseña actual.",
     "confirmNewPassword": "Confirmar nueva contraseña",
     "qrScanInstruction": "Escanea para abrir este informe.",
-    "sending": "Enviando..."
+    "sending": "Enviando...",
+    "installApp": "Instalar ADECOAGRO MINING CLOUD",
+    "iosInstallHelp": "Para instalar: toca Compartir en el navegador y selecciona “Agregar a pantalla de inicio”.",
+    "installing": "Preparando instalación..."
   },
   "en-US": {
     "login": "Sign in with Google",
@@ -630,7 +636,10 @@ const translations = {
     "passwordDescription": "Set a password to sign in with email in addition to Google, or change your current password.",
     "confirmNewPassword": "Confirm new password",
     "qrScanInstruction": "Scan to open this report.",
-    "sending": "Sending..."
+    "sending": "Sending...",
+    "installApp": "Install ADECOAGRO MINING CLOUD",
+    "iosInstallHelp": "To install: tap Share in your browser and choose “Add to Home Screen”.",
+    "installing": "Preparing installation..."
   }
 };
 
@@ -836,6 +845,12 @@ export default function App() {
   const [showPassword, setShowPassword] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
 
+  // Instalación PWA (Chrome/Edge/Android y ayuda manual para iPhone/iPad)
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
+  const [isAppInstalled, setIsAppInstalled] = useState(false);
+  const [showIOSInstallHelp, setShowIOSInstallHelp] = useState(false);
+  const isIOSDevice = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+
   // Recuperación y establecimiento de contraseña
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [newPassword, setNewPassword] = useState("");
@@ -922,6 +937,49 @@ export default function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Detecta si el navegador permite instalar la PWA o si ya está instalada.
+  useEffect(() => {
+    const handleBeforeInstallPrompt = event => {
+      event.preventDefault();
+      setDeferredInstallPrompt(event);
+    };
+
+    const handleAppInstalled = () => {
+      setIsAppInstalled(true);
+      setDeferredInstallPrompt(null);
+      setShowIOSInstallHelp(false);
+    };
+
+    const displayMode = window.matchMedia("(display-mode: standalone)");
+    const updateInstalledState = () => {
+      setIsAppInstalled(
+        displayMode.matches || window.navigator.standalone === true
+      );
+    };
+
+    updateInstalledState();
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
+    displayMode.addEventListener?.("change", updateInstalledState);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
+      displayMode.removeEventListener?.("change", updateInstalledState);
+    };
+  }, []);
+
+  async function installApp() {
+    if (!deferredInstallPrompt) {
+      setShowIOSInstallHelp(true);
+      return;
+    }
+
+    await deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    setDeferredInstallPrompt(null);
+  }
 
   useEffect(() => {
     if (session) {
@@ -2226,6 +2284,33 @@ export default function App() {
   <section className="panel login">
     <h1>ADECOAGRO MINING CLOUD</h1>
     <p>{t.googleRegistration}</p>
+
+    {!isAppInstalled && (deferredInstallPrompt || isIOSDevice) && (
+      <div style={{ margin: "14px 0", textAlign: "center" }}>
+        <button
+          type="button"
+          onClick={installApp}
+          style={{
+            width: "100%",
+            background: "#176b45",
+            color: "#ffffff",
+            border: "none",
+            borderRadius: "10px",
+            padding: "13px 16px",
+            fontWeight: "700",
+            cursor: "pointer"
+          }}
+        >
+          {t.installApp}
+        </button>
+
+        {showIOSInstallHelp && isIOSDevice && (
+          <p style={{ marginTop: "10px", fontSize: "0.9rem" }}>
+            {t.iosInstallHelp}
+          </p>
+        )}
+      </div>
+    )}
 
     <button onClick={signInGoogle} disabled={authLoading}>
       {authLoading ? t.wait : t.login}
