@@ -11,7 +11,6 @@ export default defineConfig({
       registerType: "prompt",
 
       includeAssets: [
-        "favicon.ico",
         "adeco-energia.jpg.jpg"
       ],
 
