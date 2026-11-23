@@ -2563,8 +2563,7 @@ export default function App() {
       ADECOAGRO · ENERGIA EM CRESCIMENTO
     </div>
   </section>
-) : !profile ? (
-
+  
       ) : !profile ? (
         <section className="panel">
           <p>{t.loadingProfile}</p>
