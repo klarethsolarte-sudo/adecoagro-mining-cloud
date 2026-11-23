@@ -1217,4 +1217,153 @@ footer {
   }
 }
 
+/* =========================================
+   ADECOAGRO MINING CLOUD - LOGIN MODELO 1
+========================================= */
+
+.login-screen {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+  padding: 40px 8%;
+  box-sizing: border-box;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(3, 12, 20, 0.25),
+      rgba(3, 12, 20, 0.72)
+    ),
+    url("/mining-asic-login.jpg") center / cover no-repeat;
+}
+
+.login-screen > header {
+  position: absolute;
+  top: 24px;
+  left: 5%;
+  right: 5%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: transparent;
+  box-shadow: none;
+  color: white;
+}
+
+.login-screen .brand,
+.login-screen .brand span,
+.login-screen .brand-area small {
+  color: white;
+}
+
+.login-screen .tools select {
+  background: rgba(8, 23, 35, 0.85);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.3);
+}
+
+.login-panel {
+  width: 100%;
+  max-width: 430px;
+  padding: 34px;
+  box-sizing: border-box;
+  color: white;
+  background: rgba(5, 20, 32, 0.94);
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+  backdrop-filter: blur(12px);
+}
+
+.login-brand {
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.login-panel h1,
+.login-panel h2 {
+  color: white;
+  text-align: center;
+}
+
+.login-panel p {
+  color: #d0dbe4;
+}
+
+.login-panel label {
+  display: block;
+  margin: 14px 0;
+  color: #e7edf2;
+}
+
+.login-panel input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 7px;
+  padding: 13px;
+  color: #17212b;
+  background: white;
+  border: 1px solid #cbd5df;
+  border-radius: 9px;
+}
+
+.login-panel button {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 12px;
+  border-radius: 9px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.login-submit {
+  color: white;
+  background: #16834f;
+  border: none;
+}
+
+.login-google {
+  color: #17212b;
+  background: white;
+  border: 1px solid #d5dce3;
+}
+
+.login-footer {
+  margin-top: 22px;
+  text-align: center;
+  color: #b9c7d2;
+  font-size: 12px;
+}
+
+@media (max-width: 768px) {
+  .login-screen {
+    justify-content: center;
+    align-items: center;
+    padding: 105px 18px 25px;
+    background-position: center;
+  }
+
+  .login-screen > header {
+    top: 14px;
+    left: 15px;
+    right: 15px;
+  }
+
+  .login-panel {
+    max-width: 460px;
+    padding: 27px 22px;
+  }
+}
+
+@media (max-width: 380px) {
+  .login-screen {
+    padding: 95px 12px 18px;
+  }
+
+  .login-panel {
+    padding: 22px 16px;
+  }
+}
 
