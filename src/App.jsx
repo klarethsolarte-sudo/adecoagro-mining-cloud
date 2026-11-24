@@ -3145,139 +3145,63 @@ async function exportJpg(r) {
 
         <p>¿Qué deseas hacer ahora?</p>
 
-        <div className="saved-report-actions">
+     
+<div className="saved-report-actions">
 
-          <button onClick={() => exportJpg(savedReport)}>
-            Descargar JPG
-          </button>
+  <button
+    type="button"
+    onClick={() => exportJpg(savedReport)}
+  >
+    Descargar JPG
+  </button>
 
-          <button onClick={() => exportPdf(savedReport)}>
-            Descargar PDF
-          </button>
+  <button
+    type="button"
+    onClick={() => exportPdf(savedReport)}
+  >
+    Descargar PDF
+  </button>
 
-          <button
-            onClick={() => {
-              const r = savedReport;
-              setSavedReport(null);
-              generateQR(r);
-            }}
-          >
-            Generar QR
-          </button>
+  <button
+    type="button"
+    onClick={() => {
+      const r = savedReport;
+      generateQR(r);
+    }}
+  >
+    Generar QR
+  </button>
 
-          <button
-            onClick={() => shareWhatsApp(savedReport)}
-          >
-            Compartir por WhatsApp
-          </button>
+  <button
+    type="button"
+    onClick={() => shareWhatsApp(savedReport)}
+  >
+    Compartir por WhatsApp
+  </button>
 
-          {(isAdmin || savedReport.created_by === session?.user?.id) && (
-            <button
-              className="secondary"
-              onClick={() => {
-                const r = savedReport;
-                setSavedReport(null);
-                edit(r);
-              }}
-            >
-              Editar informe
-            </button>
-          )}
+  {(isAdmin || savedReport.created_by === session?.user?.id) && (
+    <button
+      type="button"
+      className="secondary"
+      onClick={() => {
+        const r = savedReport;
+        setSavedReport(null);
+        edit(r);
+      }}
+    >
+      Editar informe
+    </button>
+  )}
 
-        </div>
+</div>
+        
+<button
+  type="button"
+  className="secondary"
+  onClick={() => setSavedReport(null)}
+>
+  Terminar
+</button>
 
-        <button
-          className="secondary"
-          onClick={() => setSavedReport(null)}
-        >
-          Terminar
-        </button>
-
-      </section>
-    </div>
-  </>
-)}
-
-      
-      {qrReport && (
-        <>
-          <div
-            id={`public-report-capture-${qrReport.id}`}
-            aria-hidden="true"
-            style={{
-              position: "fixed",
-              left: 0,
-              top: 0,
-              width: "760px",
-              background: "#ffffff",
-              pointerEvents: "none",
-              zIndex: 0
-            }}
-          >
-            {renderReport({ ...qrReport, id: `public-${qrReport.id}` })}
-          </div>
-
-          <div className="qr-overlay">
-            <section className="panel qr-modal">
-              <h2>{t.shareReport}</h2>
-
-              <p>
-                {qrReport.report_date} ·
-                {qrReport.work_shift ? ` Turno ${qrReport.work_shift} ·` : ""}
-                {" "}{qrReport.operators}
-              </p>
-
-              {qrImage ? (
-                <img src={qrImage} alt="Código QR del informe" />
-              ) : (
-                <p>Preparando el JPG público del informe y su código QR...</p>
-              )}
-
-              <p>{t.qrScanInstruction}</p>
-
-              <button
-                onClick={() => shareQRJpg(qrReport)}
-                disabled={sharingQR || !qrImage}
-              >
-                {sharingQR ? "Preparando JPG..." : "Compartir imagen QR en JPG"}
-              </button>
-
-              <button
-                className="secondary"
-                onClick={() => shareWhatsApp(qrReport, publicReportUrl)}
-                disabled={!publicReportUrl}
-              >
-                Compartir enlace público por WhatsApp
-              </button>
-
-              <button
-                className="secondary"
-                onClick={() => {
-                  setQrReport(null);
-                  setQrImage("");
-                  setPublicReportUrl("");
-                }}
-              >
-                Cerrar
-              </button>
-            </section>
-          </div>
-        </>
-      )}
-
-      {notice && (
-        <div
-          className="notice"
-          onClick={() => setNotice("")}
-        >
-          {notice} ×
-        </div>
-      )}
-
-      <footer>
-        {t.footer}
-      </footer>
-    </main>
-  );
-}
+</section>
 
