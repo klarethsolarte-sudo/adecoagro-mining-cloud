@@ -3120,16 +3120,18 @@ async function exportJpg(r) {
 <div
   id={`saved-report-capture-${savedReport.id}`}
   aria-hidden="true"
-  style={{
+  
+style={{
     position: "fixed",
-    left: "-10000px",
+    left: "0",
     top: "0",
     width: "760px",
     minWidth: "760px",
     background: "#ffffff",
     pointerEvents: "none",
-    zIndex: -1
+    zIndex: 9999
   }}
+
 >
   {renderReport(savedReport)}
 </div>
