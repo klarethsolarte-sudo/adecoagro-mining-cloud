@@ -2115,6 +2115,7 @@ export default function App() {
   }
 
  
+
 async function exportJpg(r) {
   try {
     if (!r?.id) {
@@ -2128,19 +2129,12 @@ async function exportJpg(r) {
       )
     );
 
-    const reportId = `report-${r.id}`;
-    const captureId = `saved-report-capture-${r.id}`;
-
-    let node = document.getElementById(reportId);
-
-    if (!node) {
-      node = document.getElementById(captureId);
-    }
+    const node =
+      document.getElementById(`saved-report-capture-${r.id}`) ||
+      document.getElementById(`report-${r.id}`);
 
     if (!node) {
-      setNotice(
-        "No se encontró el informe en pantalla. Cierra la ventana y vuelve a intentarlo."
-      );
+      setNotice("No se encontró el informe guardado para generar el JPG.");
       return;
     }
 
@@ -2156,12 +2150,6 @@ async function exportJpg(r) {
       )
     );
 
-    await new Promise(resolve =>
-      requestAnimationFrame(() =>
-        requestAnimationFrame(resolve)
-      )
-    );
-
     const data = await toJpeg(node, {
       quality: 0.96,
       backgroundColor: "#ffffff",
@@ -2169,14 +2157,27 @@ async function exportJpg(r) {
       cacheBust: true
     });
 
+    const response = await fetch(data);
+    const blob = await response.blob();
+
+    if (!blob.size) {
+      throw new Error("La imagen generada está vacía.");
+    }
+
+    const objectUrl = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = data;
+
+    a.href = objectUrl;
     a.download =
       `adecoagro-${r.report_date}-turno-${r.work_shift || "sin-turno"}.jpg`;
 
     document.body.appendChild(a);
     a.click();
     a.remove();
+
+    window.setTimeout(() => {
+      URL.revokeObjectURL(objectUrl);
+    }, 3000);
 
     setNotice("Imagen JPG generada correctamente.");
   } catch (error) {
@@ -2188,6 +2189,7 @@ async function exportJpg(r) {
     );
   }
 }
+
 
   function label(k) {
     return ({
