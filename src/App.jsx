@@ -3114,19 +3114,24 @@ async function exportJpg(r) {
 {savedReport && (
   <>
     {/* Informe disponible para descargar JPG inmediatamente */}
-    <div
-      id={`saved-report-capture-${savedReport.id}`}
-      style={{
-        position: "fixed",
-        left: 0,
-        top: 0,
-        width: "760px",
-        background: "#ffffff",
-        pointerEvents: "none",
-        zIndex: 0
-      }}
-    >
-      {renderReport(savedReport)}
+
+<div
+  id={`saved-report-capture-${savedReport.id}`}
+  aria-hidden="true"
+  style={{
+    position: "fixed",
+    left: "-10000px",
+    top: "0",
+    width: "760px",
+    minWidth: "760px",
+    background: "#ffffff",
+    pointerEvents: "none",
+    zIndex: -1
+  }}
+>
+  {renderReport(savedReport)}
+</div>
+
     </div>
 
     {/* Ventana de acciones después de guardar */}
