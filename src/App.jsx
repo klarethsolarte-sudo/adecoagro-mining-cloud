@@ -3059,97 +3059,86 @@ export default function App() {
         </>
       )}
 
-      {savedReport && (
-        <div className="qr-overlay">
-          <section className="panel qr-modal saved-report-modal">
-            <h2>Informe guardado correctamente</h2>
-            <p>{savedReport.report_date} · Turno {savedReport.work_shift || "-"}</p>
-            <p>¿Qué deseas hacer ahora?</p>
-            <div className="saved-report-actions">
-              <button onClick={() => exportJpg(savedReport)}>Descargar JPG</button>
-              <button onClick={() => exportPdf(savedReport)}>Descargar PDF</button>
-              <button onClick={() => { setSavedReport(null); generateQR(savedReport); }}>Generar QR</button>
-              {(isAdmin || savedReport.created_by === session?.user?.id) && (
-                <button className="secondary" onClick={() => { const r = savedReport; setSavedReport(null); edit(r); }}>Editar informe</button>
-              )}
-            </div>
-            <button className="secondary" onClick={() => setSavedReport(null)}>Terminar</button>
-          </section>
-        </div>
-      )}
+  
+{savedReport && (
+  <>
+    {/* Informe disponible para descargar JPG inmediatamente */}
+    <div
+      id={`saved-report-capture-${savedReport.id}`}
+      style={{
+        position: "fixed",
+        left: 0,
+        top: 0,
+        width: "760px",
+        background: "#ffffff",
+        pointerEvents: "none",
+        zIndex: 0
+      }}
+    >
+      {renderReport(savedReport)}
+    </div>
 
-      {qrReport && (
-        <>
-          <div
-            id={`public-report-capture-${qrReport.id}`}
-            aria-hidden="true"
-            style={{
-              // Mantener el informe dentro del área visible del navegador para
-              // que html-to-image pueda capturarlo correctamente. El modal QR
-              // queda por encima y el informe no interfiere con los controles.
-              position: "fixed",
-              left: 0,
-              top: 0,
-              width: "760px",
-              background: "#ffffff",
-              pointerEvents: "none",
-              zIndex: 0
+    {/* Ventana de acciones después de guardar */}
+    <div className="qr-overlay">
+      <section className="panel qr-modal saved-report-modal">
+        <h2>Informe guardado correctamente</h2>
+
+        <p>
+          {savedReport.report_date} · Turno {savedReport.work_shift || "-"}
+        </p>
+
+        <p>¿Qué deseas hacer ahora?</p>
+
+        <div className="saved-report-actions">
+
+          <button onClick={() => exportJpg(savedReport)}>
+            Descargar JPG
+          </button>
+
+          <button onClick={() => exportPdf(savedReport)}>
+            Descargar PDF
+          </button>
+
+          <button
+            onClick={() => {
+              const r = savedReport;
+              setSavedReport(null);
+              generateQR(r);
             }}
           >
-            {renderReport({ ...qrReport, id: `public-${qrReport.id}` })}
-          </div>
-          <div className="qr-overlay">
-          <section className="panel qr-modal">
-            <h2>{t.shareReport}</h2>
+            Generar QR
+          </button>
 
-            <p>
-              {qrReport.report_date} ·
-              {qrReport.work_shift ? ` Turno ${qrReport.work_shift} ·` : ""}
-              {" "}{qrReport.operators}
-            </p>
+          <button
+            onClick={() => shareWhatsApp(savedReport)}
+          >
+            Compartir por WhatsApp
+          </button>
 
-            {qrImage ? (
-              <img src={qrImage} alt="Código QR del informe" />
-            ) : (
-              <p>Preparando el JPG público del informe y su código QR...</p>
-            )}
-
-            <p>{t.qrScanInstruction}</p>
-
-            <button onClick={() => shareQRJpg(qrReport)} disabled={sharingQR || !qrImage}>
-              {sharingQR ? "Preparando JPG..." : "Compartir imagen QR en JPG"}
-            </button>
-            <button className="secondary" onClick={() => shareWhatsApp(qrReport, publicReportUrl)} disabled={!publicReportUrl}>
-              Compartir enlace público por WhatsApp
-            </button>
-
+          {(isAdmin || savedReport.created_by === session?.user?.id) && (
             <button
               className="secondary"
               onClick={() => {
-                setQrReport(null);
-                setQrImage("");
-                setPublicReportUrl("");
+                const r = savedReport;
+                setSavedReport(null);
+                edit(r);
               }}
             >
-              Cerrar
+              Editar informe
             </button>
-          </section>
-          </div>
-        </>
-      )}
+          )}
 
-      {notice && (
-        <div
-          className="notice"
-          onClick={() => setNotice("")}
-        >
-          {notice} ×
         </div>
-      )}
 
-      <footer>
-        {t.footer}
-      </footer>
-    </main>
-  );
-}
+        <button
+          className="secondary"
+          onClick={() => setSavedReport(null)}
+        >
+          Terminar
+        </button>
+
+      </section>
+    </div>
+  </>
+)}
+
