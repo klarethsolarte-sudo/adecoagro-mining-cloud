@@ -2114,31 +2114,80 @@ export default function App() {
     }
   }
 
-  async function exportJpg(r) {
-    try {
-      const node = document.getElementById(`report-${r.id}`);
-
-      if (!node) {
-        setNotice(t.reportNotFound);
-        return;
-      }
-
-      const data = await toJpeg(node, {
-        quality: 0.95,
-        backgroundColor: "#ffffff",
-        pixelRatio: 2,
-        cacheBust: true
-      });
-
-      const a = document.createElement("a");
-      a.href = data;
-      a.download =
-        `adecoagro-${r.report_date}-turno-${r.work_shift || "sin-turno"}.jpg`;
-      a.click();
-    } catch (error) {
-      setNotice(`${t.jpgError} ${error.message}`);
+ 
+async function exportJpg(r) {
+  try {
+    if (!r?.id) {
+      setNotice("No se pudo identificar el informe para generar el JPG.");
+      return;
     }
+
+    await new Promise(resolve =>
+      requestAnimationFrame(() =>
+        requestAnimationFrame(resolve)
+      )
+    );
+
+    const reportId = `report-${r.id}`;
+    const captureId = `saved-report-capture-${r.id}`;
+
+    let node = document.getElementById(reportId);
+
+    if (!node) {
+      node = document.getElementById(captureId);
+    }
+
+    if (!node) {
+      setNotice(
+        "No se encontró el informe en pantalla. Cierra la ventana y vuelve a intentarlo."
+      );
+      return;
+    }
+
+    if (document.fonts?.ready) {
+      await document.fonts.ready;
+    }
+
+    await Promise.all(
+      Array.from(node.querySelectorAll("img")).map(img =>
+        img.decode
+          ? img.decode().catch(() => {})
+          : Promise.resolve()
+      )
+    );
+
+    await new Promise(resolve =>
+      requestAnimationFrame(() =>
+        requestAnimationFrame(resolve)
+      )
+    );
+
+    const data = await toJpeg(node, {
+      quality: 0.96,
+      backgroundColor: "#ffffff",
+      pixelRatio: 2,
+      cacheBust: true
+    });
+
+    const a = document.createElement("a");
+    a.href = data;
+    a.download =
+      `adecoagro-${r.report_date}-turno-${r.work_shift || "sin-turno"}.jpg`;
+
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    setNotice("Imagen JPG generada correctamente.");
+  } catch (error) {
+    console.error("Error al generar JPG:", error);
+
+    setNotice(
+      "No se pudo generar el JPG: " +
+      (error?.message || "Error desconocido")
+    );
   }
+}
 
   function label(k) {
     return ({
