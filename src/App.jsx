@@ -3142,3 +3142,86 @@ export default function App() {
   </>
 )}
 
+      
+      {qrReport && (
+        <>
+          <div
+            id={`public-report-capture-${qrReport.id}`}
+            aria-hidden="true"
+            style={{
+              position: "fixed",
+              left: 0,
+              top: 0,
+              width: "760px",
+              background: "#ffffff",
+              pointerEvents: "none",
+              zIndex: 0
+            }}
+          >
+            {renderReport({ ...qrReport, id: `public-${qrReport.id}` })}
+          </div>
+
+          <div className="qr-overlay">
+            <section className="panel qr-modal">
+              <h2>{t.shareReport}</h2>
+
+              <p>
+                {qrReport.report_date} ·
+                {qrReport.work_shift ? ` Turno ${qrReport.work_shift} ·` : ""}
+                {" "}{qrReport.operators}
+              </p>
+
+              {qrImage ? (
+                <img src={qrImage} alt="Código QR del informe" />
+              ) : (
+                <p>Preparando el JPG público del informe y su código QR...</p>
+              )}
+
+              <p>{t.qrScanInstruction}</p>
+
+              <button
+                onClick={() => shareQRJpg(qrReport)}
+                disabled={sharingQR || !qrImage}
+              >
+                {sharingQR ? "Preparando JPG..." : "Compartir imagen QR en JPG"}
+              </button>
+
+              <button
+                className="secondary"
+                onClick={() => shareWhatsApp(qrReport, publicReportUrl)}
+                disabled={!publicReportUrl}
+              >
+                Compartir enlace público por WhatsApp
+              </button>
+
+              <button
+                className="secondary"
+                onClick={() => {
+                  setQrReport(null);
+                  setQrImage("");
+                  setPublicReportUrl("");
+                }}
+              >
+                Cerrar
+              </button>
+            </section>
+          </div>
+        </>
+      )}
+
+      {notice && (
+        <div
+          className="notice"
+          onClick={() => setNotice("")}
+        >
+          {notice} ×
+        </div>
+      )}
+
+      <footer>
+        {t.footer}
+      </footer>
+    </main>
+  );
+}
+
