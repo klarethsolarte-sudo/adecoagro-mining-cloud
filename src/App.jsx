@@ -1039,28 +1039,29 @@ export default function App() {
     }
   }
 
-  async function loadReports() {
-    const sharedId = new URLSearchParams(
-      window.location.search
-    ).get("report");
 
-    let query = supabase.from("daily_reports").select("*");
+async function loadReports() {
+  const sharedId = new URLSearchParams(
+    window.location.search
+  ).get("report");
 
-    if (sharedId) {
-      query = query.eq("id", sharedId);
-    }
+  let query = supabase.from("daily_reports").select("*");
 
-    const { data, error } = await query.order(
-      "report_date",
-      { ascending: false }
-    );
-
-    if (error) {
-      setNotice(error.message);
-    } else {
-      setReports(data || []);
-    }
+  if (sharedId) {
+    query = query.eq("id", sharedId);
   }
+
+  const { data, error } = await query.order(
+    "created_at",
+    { ascending: false }
+  );
+
+  if (error) {
+    setNotice(error.message);
+  } else {
+    setReports(data || []);
+  }
+}
 
   async function loadUsers() {
     const { data, error } = await supabase
