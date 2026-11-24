@@ -3132,7 +3132,7 @@ async function exportJpg(r) {
   }}
 >
   {renderReport(savedReport)}
-    </div>
+</div>
 
     {/* Ventana de acciones después de guardar */}
     <div className="qr-overlay">
