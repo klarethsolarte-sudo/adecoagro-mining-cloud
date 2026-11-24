@@ -1794,7 +1794,9 @@ export default function App() {
 
       // Espera a que React pinte el informe completo en el área de captura.
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      const node = document.getElementById(`public-report-capture-${r.id}`);
+     const node =
+  document.getElementById(`saved-report-capture-${r.id}`) ||
+  document.getElementById(`report-${r.id}`);
       if (!node) throw new Error("No se encontró la imagen del informe para publicar.");
 
       // Espera a que el contenido y las imágenes del informe estén completamente cargados.
@@ -3130,8 +3132,6 @@ async function exportJpg(r) {
   }}
 >
   {renderReport(savedReport)}
-</div>
-
     </div>
 
     {/* Ventana de acciones después de guardar */}
@@ -3204,4 +3204,77 @@ async function exportJpg(r) {
 </button>
 
 </section>
+      
+      </div>
+    </>
+  )}
+
+  {qrReport && (
+    <div className="qr-overlay">
+      <section className="panel qr-modal">
+        <h2>QR del informe operacional</h2>
+
+        <p>
+          {qrReport.report_date} · Turno {qrReport.work_shift || "-"}
+        </p>
+
+        {qrImage ? (
+          <>
+            <img
+              src={qrImage}
+              alt="Código QR del informe ADECOAGRO"
+              style={{
+                display: "block",
+                width: "100%",
+                maxWidth: "300px",
+                height: "auto",
+                margin: "15px auto"
+              }}
+            />
+
+            <p>
+              Escanea el código QR para consultar la imagen del informe.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => shareQRJpg(qrReport)}
+              disabled={sharingQR}
+            >
+              {sharingQR ? "Preparando imagen..." : "Compartir QR en JPG"}
+            </button>
+
+            {publicReportUrl && (
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => shareWhatsApp(qrReport, publicReportUrl)}
+              >
+                Compartir enlace por WhatsApp
+              </button>
+            )}
+          </>
+        ) : (
+          <p>Preparando el código QR...</p>
+        )}
+
+        <button
+          type="button"
+          className="secondary"
+          onClick={() => {
+            setQrReport(null);
+            setQrImage("");
+            setPublicReportUrl("");
+          }}
+        >
+          Cerrar
+        </button>
+      </section>
+    </div>
+  )}
+
+    </main>
+  );
+}
+
 
