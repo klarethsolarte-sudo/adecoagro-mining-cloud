@@ -2489,7 +2489,7 @@ async function exportJpg(r) {
   </section>
 </div>
 
-      ) : profile.status !== "approved" && !isAdmin ? (
+     ) : profile && profile.status !== "approved" && !isAdmin ? (
         <section className="panel">
           <h2>
             {profile.status === "blocked" ? t.blocked : t.pendingStatus}
