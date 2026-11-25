@@ -2338,39 +2338,40 @@ async function exportJpg(r) {
       </header>
 
 {!session ? (
-  <section className="panel login">
-    <h1>ADECOAGRO MINING CLOUD</h1>
-    <p>{t.googleRegistration}</p>
+ 
+<div className="login-screen">
+  <section className="login-panel">
+    <div className="login-brand">
+      <img
+        src={LOGO}
+        alt="ADECO ENERGIA"
+        className="login-logo"
+      />
+      <h1>ADECOAGRO</h1>
+      <span>MINING CLOUD</span>
+      <p>Energia em crescimento</p>
+    </div>
 
+    <h2>Bem-vindo / Bienvenido</h2>
+    <p className="login-intro">{t.googleRegistration}</p>
 
     {!isAppInstalled && (deferredInstallPrompt || isIOSDevice) && (
-      <div style={{ margin: "14px 0", textAlign: "center" }}>
-        <button
-          type="button"
-          onClick={installApp}
-          style={{
-            width: "100%",
-            background: "#176b45",
-            color: "#ffffff",
-            border: "none",
-            borderRadius: "10px",
-            padding: "13px 16px",
-            fontWeight: "700",
-            cursor: "pointer"
-          }}
-        >
+      <div className="login-install">
+        <button type="button" onClick={installApp}>
           {t.installApp}
         </button>
 
         {showIOSInstallHelp && isIOSDevice && (
-          <p style={{ marginTop: "10px", fontSize: "0.9rem" }}>
-            {t.iosInstallHelp}
-          </p>
+          <p>{t.iosInstallHelp}</p>
         )}
       </div>
     )}
 
-    <button onClick={signInGoogle} disabled={authLoading}>
+    <button
+      className="login-google"
+      onClick={signInGoogle}
+      disabled={authLoading}
+    >
       {authLoading ? t.wait : t.login}
     </button>
 
@@ -2413,27 +2414,57 @@ async function exportJpg(r) {
         </div>
       </label>
 
-      <button type="submit" disabled={authLoading}>
+      <button
+        type="submit"
+        className="login-submit"
+        disabled={authLoading}
+      >
         {authLoading ? t.entering : t.loginEmail}
       </button>
     </form>
 
     <button
       type="button"
-      className="secondary"
+      className="login-recovery"
       onClick={recoverPassword}
       disabled={authLoading}
     >
       {t.forgotPassword}
     </button>
 
-    {notice && <p>{notice}</p>}
+    {notice && <p className="login-notice">{notice}</p>}
+
+    <div className="login-footer">
+      ADECOAGRO · MINING CLOUD
+    </div>
   </section>
 
-      ) : !profile ? (
-        <section className="panel">
-          <p>{t.loadingProfile}</p>
-        </section>
+  <section className="login-showcase">
+    <div className="showcase-content">
+      <span className="showcase-label">
+        AGRICULTURA · ENERGIA · TECNOLOGIA
+      </span>
+
+      <h1>Energia em crescimento</h1>
+
+      <p>
+        Unindo a força do agronegócio, a energia renovável
+        e a inovação da mineração digital.
+      </p>
+
+      <div className="showcase-pillars">
+        <span>🌱 Agricultura</span>
+        <span>⚡ Energia renovável</span>
+        <span>🖥️ Mineração Bitcoin</span>
+      </div>
+    </div>
+
+    <div className="showcase-footer">
+      ADECOAGRO MINING CLOUD
+    </div>
+  </section>
+</div>
+
       ) : profile.status !== "approved" && !isAdmin ? (
         <section className="panel">
           <h2>
