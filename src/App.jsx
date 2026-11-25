@@ -872,12 +872,6 @@ const [authLoading, setAuthLoading] = useState(false);
 
   const t = translations[lang] || translations["pt-BR"];
 
- const onlineValue = Number(form.miners_online || 0);
-
-const offlineValue = form.miners_online === ""
-  ? ""
-  : Math.max(0, TOTAL_MINERS - onlineValue);
-
 const onlineValue = Number(form.miners_online || 0);
 
 const offlineValue = form.miners_online === ""
