@@ -1826,5 +1826,52 @@ footer {
   }
 }
 
+/* =========================================
+   ADECOAGRO - MOSTRAR PRESENTACION EN MOVILES
+========================================= */
+
+@media (max-width: 650px) {
+  .login-screen {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .login-panel {
+    width: 100%;
+    min-height: auto;
+    padding-top: 85px;
+    padding-bottom: 40px;
+  }
+
+  .login-showcase {
+    display: flex !important;
+    min-height: 480px;
+    padding: 65px 25px 75px;
+    justify-content: center;
+    background: rgba(7, 42, 27, 0.55);
+  }
+
+  .showcase-content {
+    width: 100%;
+  }
+
+  .showcase-content h1 {
+    font-size: clamp(34px, 9vw, 48px);
+  }
+
+  .showcase-pillars {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .showcase-footer {
+    bottom: 18px;
+    right: 15px;
+    left: 15px;
+    text-align: center;
+  }
+}
+
 
 
