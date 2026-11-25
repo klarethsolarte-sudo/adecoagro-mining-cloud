@@ -2799,6 +2799,7 @@ async function exportJpg(r) {
     readOnly
     placeholder="0"
   />
+) : k === "generators_online" ? (
   <select
     value={form.generators_online}
     onChange={e => setForm({
@@ -2813,7 +2814,7 @@ async function exportJpg(r) {
     <option value="2">2/3</option>
     <option value="3">3/3</option>
   </select>
-                      ) : (
+) : (
                         <input
                           required={
                             k === "report_date" ||
