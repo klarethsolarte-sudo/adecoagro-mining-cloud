@@ -2771,7 +2771,21 @@ async function exportJpg(r) {
                             [k]: e.target.value
                           })}
                         />
-                     ) : k === "availability" ? (
+) : k === "miners_online" ? (
+  <input
+    type="number"
+    min="0"
+    max={TOTAL_MINERS}
+    step="1"
+    value={form.miners_online}
+    onChange={e => setForm({
+      ...form,
+      miners_online: e.target.value
+    })}
+    placeholder="0"
+    required
+  />
+) : k === "availability" ? (
   <input
     type="number"
     value={availability}
@@ -2785,7 +2799,6 @@ async function exportJpg(r) {
     readOnly
     placeholder="0"
   />
-) : k === "generators_online" ? (
   <select
     value={form.generators_online}
     onChange={e => setForm({
