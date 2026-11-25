@@ -1873,5 +1873,51 @@ footer {
   }
 }
 
+/* =========================================
+   ADECOAGRO - AJUSTE DEFINITIVO ESCRITORIO
+========================================= */
+
+@media (min-width: 851px) {
+  .login-screen {
+    display: grid !important;
+    grid-template-columns: minmax(430px, 40%) minmax(0, 60%) !important;
+    min-height: 100vh;
+    align-items: stretch;
+    background-position: center;
+  }
+
+  .login-panel {
+    width: 100%;
+    min-height: 100vh;
+    padding: 75px clamp(30px, 4vw, 65px) 35px;
+    justify-content: center;
+  }
+
+  .login-showcase {
+    display: flex !important;
+    min-height: 100vh;
+    padding: 100px clamp(35px, 6vw, 100px) 55px;
+    justify-content: center;
+  }
+
+  .showcase-content {
+    max-width: 720px;
+  }
+
+  .showcase-content h1 {
+    font-size: clamp(46px, 5vw, 76px);
+  }
+
+  .showcase-content p {
+    font-size: 19px;
+    max-width: 600px;
+  }
+
+  .showcase-pillars {
+    gap: 13px;
+  }
+}
+
+
 
 
