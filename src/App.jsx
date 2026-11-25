@@ -2305,7 +2305,7 @@ async function exportJpg(r) {
   }
 
   return (
-    <main className={`app-layout ${session ? "authenticated" : "unauthenticated"}`}>
+   <main className={`app-layout ${session ? "authenticated" : "unauthenticated login-page"}`}>
       <header>
         <div className="brand-area">
           <img
