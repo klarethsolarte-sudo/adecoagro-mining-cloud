@@ -1015,44 +1015,51 @@ useEffect(() => {
   }, []);
 
 
-  async function loadProfile() {
-    const currentSession = session;
 
-    if (!currentSession?.user?.id) return;
+async function loadProfile(currentSession = session) {
+  if (!currentSession?.user?.id) return;
 
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", currentSession.user.id)
-      .maybeSingle();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", currentSession.user.id)
+    .maybeSingle();
 
-    if (error) {
-      setNotice(error.message);
-      return;
-    }
+  if (error) {
+    setNotice(error.message);
+    return;
+  }
 
-    setProfile(data);
-
-    setProfileName(
-      data?.full_name ||
-      currentSession.user.user_metadata?.full_name ||
-      currentSession.user.user_metadata?.name ||
-      ""
+  if (!data) {
+    setProfile(null);
+    setNotice(
+      "No se encontró el perfil de este usuario. Contacta al administrador."
     );
+    return;
+  }
+
+  setProfile(data);
+
+  setProfileName(
+    data.full_name ||
+    currentSession.user.user_metadata?.full_name ||
+    currentSession.user.user_metadata?.name ||
+    ""
+  );
+
+  if (
+    data.status === "approved" &&
+    !data.must_change_password
+  ) {
+    await loadReports();
 
     if (
-      data?.status === "approved" &&
-      !data?.must_change_password
+      currentSession.user.email?.toLowerCase() === ADMIN
     ) {
-      await loadReports();
-
-      if (
-        currentSession.user.email?.toLowerCase() === ADMIN
-      ) {
-        await loadUsers();
-      }
+      await loadUsers();
     }
   }
+}
 
 
 async function loadReports() {
