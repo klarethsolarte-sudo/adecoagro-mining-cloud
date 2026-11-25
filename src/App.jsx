@@ -872,11 +872,23 @@ const [authLoading, setAuthLoading] = useState(false);
 
   const t = translations[lang] || translations["pt-BR"];
 
-  const availability = form.miners_online === ""
-    ? "0.00"
-    : (
-        (Number(form.miners_online) / TOTAL_MINERS) * 100
-      ).toFixed(2);
+ const onlineValue = Number(form.miners_online || 0);
+
+const offlineValue = form.miners_online === ""
+  ? ""
+  : Math.max(0, TOTAL_MINERS - onlineValue);
+
+const onlineValue = Number(form.miners_online || 0);
+
+const offlineValue = form.miners_online === ""
+  ? ""
+  : Math.max(0, TOTAL_MINERS - onlineValue);
+
+const availability = form.miners_online === ""
+  ? "0.00"
+  : (
+      (onlineValue / TOTAL_MINERS) * 100
+    ).toFixed(2);
 
   const isAdmin =
     session?.user?.email?.toLowerCase() === ADMIN;
@@ -1397,9 +1409,27 @@ async function loadReports() {
 
   async function save(e) {
     e.preventDefault();
+const online = Number(form.miners_online || 0);
+const offline = TOTAL_MINERS - online;
 
-    const online = Number(form.miners_online || 0);
-    const offline = Number(form.miners_offline || 0);
+if (online > TOTAL_MINERS) {
+  setNotice(
+    "Error: las mineradoras em operação não podem superar as 1280 unidades."
+  );
+  return;
+}
+
+if (online < 0) {
+  setNotice(t.minersNegative);
+  return;
+}
+
+if (online > TOTAL_MINERS) {
+  setNotice(
+    "Error: las mineradoras em operação não podem superar as 1280 unidades."
+  );
+  return;
+}
 
     if (!form.work_shift) {
       setNotice(t.selectWorkShift);
@@ -1449,7 +1479,7 @@ async function loadReports() {
         : `${form.rest_type}|${form.rest_person.trim()}`,
       hashrate_ph: num(form.hashrate),
       miners_online: num(form.miners_online),
-      miners_offline: num(form.miners_offline),
+     miners_offline: offline,
       availability_pct: num(availability),
       power_mw: num(form.power_mw),
       month_consumption_kwh: num(form.monthly_kwh),
@@ -2747,28 +2777,35 @@ async function exportJpg(r) {
                             [k]: e.target.value
                           })}
                         />
-                      ) : k === "availability" ? (
-                        <input
-                          type="number"
-                          value={availability}
-                          readOnly
-                          placeholder="0.00"
-                        />
-                      ) : k === "generators_online" ? (
-                        <select
-                          value={form.generators_online}
-                          onChange={e => setForm({
-                            ...form,
-                            generators_online: e.target.value
-                          })}
-                          required
-                        >
-                          <option value="">{t.select}</option>
-                          <option value="0">0/3</option>
-                          <option value="1">1/3</option>
-                          <option value="2">2/3</option>
-                          <option value="3">3/3</option>
-                        </select>
+                     ) : k === "availability" ? (
+  <input
+    type="number"
+    value={availability}
+    readOnly
+    placeholder="0.00"
+  />
+) : k === "miners_offline" ? (
+  <input
+    type="number"
+    value={offlineValue}
+    readOnly
+    placeholder="0"
+  />
+) : k === "generators_online" ? (
+  <select
+    value={form.generators_online}
+    onChange={e => setForm({
+      ...form,
+      generators_online: e.target.value
+    })}
+    required
+  >
+    <option value="">{t.select}</option>
+    <option value="0">0/3</option>
+    <option value="1">1/3</option>
+    <option value="2">2/3</option>
+    <option value="3">3/3</option>
+  </select>
                       ) : (
                         <input
                           required={
