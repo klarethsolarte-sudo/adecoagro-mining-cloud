@@ -907,7 +907,7 @@ export default function App() {
 
 
 
-  useEffect(() => {
+   useEffect(() => {
     if (!configured) return;
 
     const hash = new URLSearchParams(
@@ -917,11 +917,10 @@ export default function App() {
     if (hash.get("type") === "recovery") {
       setRecoveryMode(true);
     }
+  }, []);
 
- 
-useEffect(() => {
-  let mounted = true;
-
+  useEffect(() => {
+    let mounted = true;
   async function initializeSession() {
     const { data, error } = await supabase.auth.getSession();
 
