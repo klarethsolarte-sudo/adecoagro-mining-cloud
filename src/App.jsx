@@ -998,15 +998,17 @@ useEffect(() => {
     setDeferredInstallPrompt(null);
   }
 
-  useEffect(() => {
-    if (session) {
-      loadProfile();
-    } else {
-      setProfile(null);
-      setReports([]);
-      setUsers([]);
-    }
-  }, [session]);
+ 
+useEffect(() => {
+  if (session) {
+    loadProfile(session);
+  } else {
+    setProfile(null);
+    setReports([]);
+    setUsers([]);
+  }
+}, [session]);
+
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("report")) {
