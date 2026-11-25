@@ -840,10 +840,11 @@ export default function App() {
   const [savingProfile, setSavingProfile] = useState(false);
 
   // Autenticación por correo y contraseña
-  const [authEmail, setAuthEmail] = useState("");
-  const [authPassword, setAuthPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [authLoading, setAuthLoading] = useState(false);
+ const [authEmail, setAuthEmail] = useState("");
+const [authPassword, setAuthPassword] = useState("");
+const [showPassword, setShowPassword] = useState(false);
+const [showEmailLogin, setShowEmailLogin] = useState(false);
+const [authLoading, setAuthLoading] = useState(false);
 
   // Instalación PWA (Chrome/Edge/Android y ayuda manual para iPhone/iPad)
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
@@ -2398,6 +2399,20 @@ async function exportJpg(r) {
       {authLoading ? t.wait : t.login}
     </button>
 
+<button
+  type="button"
+  className="login-email-toggle"
+  onClick={() => {
+    setShowEmailLogin(!showEmailLogin);
+    setShowPassword(false);
+  }}
+  disabled={authLoading}
+>
+  ✉️ {showEmailLogin ? t.cancel : t.loginEmail}
+</button>
+
+{showEmailLogin && (
+  <>
     <div className="auth-divider">
       <span>{t.or}</span>
     </div>
@@ -2454,7 +2469,8 @@ async function exportJpg(r) {
     >
       {t.forgotPassword}
     </button>
-
+  </>
+)}
     {notice && <p className="login-notice">{notice}</p>}
 
     <div className="login-footer">
