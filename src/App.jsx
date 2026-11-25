@@ -918,27 +918,42 @@ export default function App() {
       setRecoveryMode(true);
     }
 
-    supabase.auth.getSession().then(({ data, error }) => {
-      if (error) {
-        setNotice(error.message);
-        return;
-      }
+ 
+useEffect(() => {
+  let mounted = true;
 
-      setSession(data.session);
-    });
+  async function initializeSession() {
+    const { data, error } = await supabase.auth.getSession();
 
-    const {
-      data: { subscription }
-    } = supabase.auth.onAuthStateChange((event, newSession) => {
-      setSession(newSession);
+    if (!mounted) return;
 
-      if (event === "PASSWORD_RECOVERY") {
-        setRecoveryMode(true);
-      }
-    });
+    if (error) {
+      setNotice(error.message);
+      return;
+    }
 
-    return () => subscription.unsubscribe();
-  }, []);
+    setSession(data.session);
+  }
+
+  initializeSession();
+
+  const {
+    data: { subscription }
+  } = supabase.auth.onAuthStateChange((event, newSession) => {
+    if (!mounted) return;
+
+    setSession(newSession);
+
+    if (event === "PASSWORD_RECOVERY") {
+      setRecoveryMode(true);
+    }
+  });
+
+  return () => {
+    mounted = false;
+    subscription.unsubscribe();
+  };
+}, []);
 
   // Detecta si el navegador permite instalar la PWA o si ya está instalada.
   useEffect(() => {
