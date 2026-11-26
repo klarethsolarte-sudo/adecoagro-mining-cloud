@@ -1860,7 +1860,7 @@ if (online > TOTAL_MINERS) {
       const jpgData = await toJpeg(node, {
         quality: 0.96,
         backgroundColor: "#ffffff",
-        pixelRatio: 2,
+        pixelRatio: 3,
         cacheBust: true
       });
       const jpgBlob = await (await fetch(jpgData)).blob();
@@ -1892,85 +1892,96 @@ if (online > TOTAL_MINERS) {
     }
   }
 
-  async function shareQRJpg(r) {
-    if (!r) return;
-    setSharingQR(true);
+ async function shareQRJpg(r) {
+  if (!r) return;
 
-    try {
-      if (!publicReportUrl) throw new Error("Primero espera a que termine de prepararse el QR público.");
-      const url = publicReportUrl;
-      const qrData = await QRCode.toDataURL(url, {
-        width: 640,
-        margin: 2,
-        errorCorrectionLevel: "H"
-      });
+  setSharingQR(true);
 
-      const qr = new Image();
-      qr.src = qrData;
-      await new Promise((resolve, reject) => {
-        qr.onload = resolve;
-        qr.onerror = reject;
-      });
+  try {
+    await new Promise(resolve =>
+      requestAnimationFrame(() =>
+        requestAnimationFrame(resolve)
+      )
+    );
 
-      const canvas = document.createElement("canvas");
-      canvas.width = 900;
-      canvas.height = 1080;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("No fue posible preparar la imagen.");
+    const node =
+      document.getElementById(`saved-report-capture-${r.id}`) ||
+      document.getElementById(`report-${r.id}`);
 
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "#164d35";
-      ctx.fillRect(0, 0, canvas.width, 190);
-      ctx.fillStyle = "#ffffff";
-      ctx.textAlign = "center";
-      ctx.font = "bold 42px Arial";
-      ctx.fillText("ADECOAGRO MINING CLOUD", 450, 82);
-      ctx.font = "26px Arial";
-      ctx.fillText(t.reportSubtitle, 450, 132);
-
-      ctx.fillStyle = "#203d2d";
-      ctx.font = "bold 34px Arial";
-      ctx.fillText(`${r.report_date || ""}  ·  ${t.shiftLabel} ${r.work_shift || "-"}`, 450, 250);
-      ctx.font = "28px Arial";
-      const operatorText = String(r.operators || "");
-      ctx.fillText(operatorText.length > 48 ? operatorText.slice(0, 45) + "..." : operatorText, 450, 300);
-
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(120, 340, 660, 660);
-      ctx.drawImage(qr, 130, 350, 640, 640);
-      ctx.fillStyle = "#164d35";
-      ctx.font = "bold 27px Arial";
-      ctx.fillText(t.qrScanInstruction, 450, 1035);
-
-      const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.94));
-      if (!blob) throw new Error("No fue posible crear el archivo JPG.");
-      const filename = `adecoagro-qr-${r.report_date}-turno-${r.work_shift || "sin-turno"}.jpg`;
-      const file = new File([blob], filename, { type: "image/jpeg" });
-
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          title: "ADECOAGRO MINING CLOUD",
-          text: `Informe operacional ${r.report_date} · Turno ${r.work_shift || "-"}`,
-          files: [file]
-        });
-      } else {
-        const objectUrl = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = objectUrl;
-        a.download = filename;
-        a.click();
-        URL.revokeObjectURL(objectUrl);
-        window.open(`https://wa.me/?text=${encodeURIComponent("ADECOAGRO MINING CLOUD - Informe operacional: " + url)}`, "_blank");
-        setNotice("Imagen JPG descargada. Adjunta ese archivo en WhatsApp, Messenger u otro chat.");
-      }
-    } catch (error) {
-      if (error?.name !== "AbortError") setNotice(`No se pudo compartir el JPG: ${error.message}`);
-    } finally {
-      setSharingQR(false);
+    if (!node) {
+      throw new Error("No se encontró el informe completo.");
     }
-  }
 
+    if (document.fonts?.ready) {
+      await document.fonts.ready;
+    }
+
+    await Promise.all(
+      Array.from(node.querySelectorAll("img")).map(img =>
+        img.decode
+          ? img.decode().catch(() => {})
+          : Promise.resolve()
+      )
+    );
+
+    const jpgData = await toJpeg(node, {
+      quality: 0.96,
+      backgroundColor: "#ffffff",
+      pixelRatio: 3,
+      cacheBust: true
+    });
+
+    const response = await fetch(jpgData);
+    const blob = await response.blob();
+
+    if (!blob.size) {
+      throw new Error("La imagen generada está vacía.");
+    }
+
+    const filename =
+      `adecoagro-${r.report_date}-turno-${r.work_shift || "sin-turno"}.jpg`;
+
+    const file = new File([blob], filename, {
+      type: "image/jpeg"
+    });
+
+    if (
+      navigator.share &&
+      navigator.canShare &&
+      navigator.canShare({ files: [file] })
+    ) {
+      await navigator.share({
+        files: [file],
+        title: "Informe operacional ADECOAGRO"
+      });
+    } else {
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = objectUrl;
+      link.download = filename;
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.setTimeout(() => {
+        URL.revokeObjectURL(objectUrl);
+      }, 3000);
+    }
+
+    setNotice("Imagen completa del informe preparada correctamente.");
+  } catch (error) {
+    if (error?.name !== "AbortError") {
+      setNotice(
+        "No se pudo preparar la imagen: " +
+        (error?.message || "Error desconocido")
+      );
+    }
+  } finally {
+    setSharingQR(false);
+  }
+}
   function shareWhatsApp(r, sharedUrl = "") {
     const url = sharedUrl ||
       `${window.location.origin}/?report=${encodeURIComponent(r.id)}`;
@@ -2204,7 +2215,7 @@ async function exportJpg(r) {
     const data = await toJpeg(node, {
       quality: 0.96,
       backgroundColor: "#ffffff",
-      pixelRatio: 2,
+      pixelRatio: 3,
       cacheBust: true
     });
 
